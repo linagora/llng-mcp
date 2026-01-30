@@ -6,7 +6,12 @@ export class SshTransport implements ILlngTransport {
   private paths: { cliPath: string; sessionsPath: string; configEditorPath: string };
 
   constructor(private config: SshConfig) {
-    this.paths = resolvePaths(config.binPrefix, config.cliPath, config.sessionsPath, config.configEditorPath);
+    this.paths = resolvePaths(
+      config.binPrefix,
+      config.cliPath,
+      config.sessionsPath,
+      config.configEditorPath,
+    );
   }
 
   private async exec(args: string[], env?: Record<string, string>): Promise<string> {

@@ -106,7 +106,9 @@ describe("K8sTransport", () => {
       await transport.configGet(["domain"]);
 
       // Pod resolution should only happen once (first call)
-      const getPodsCalls = spawnCalls.filter((c) => c.args.includes("get") && c.args.includes("pods"));
+      const getPodsCalls = spawnCalls.filter(
+        (c) => c.args.includes("get") && c.args.includes("pods"),
+      );
       expect(getPodsCalls).toHaveLength(1);
     });
 
@@ -232,10 +234,7 @@ describe("K8sTransport", () => {
     });
 
     it("configSet passes key-value pairs", async () => {
-      setupSpawnMock(
-        { stdout: "llng-pod-123" },
-        { stdout: "" },
-      );
+      setupSpawnMock({ stdout: "llng-pod-123" }, { stdout: "" });
 
       const transport = new K8sTransport(defaultConfig);
       await transport.configSet({ domain: "example.com" }, "Update");
@@ -250,10 +249,7 @@ describe("K8sTransport", () => {
     });
 
     it("sessionSearch builds correct args", async () => {
-      setupSpawnMock(
-        { stdout: "llng-pod-123" },
-        { stdout: '[{"id": "s1"}]' },
-      );
+      setupSpawnMock({ stdout: "llng-pod-123" }, { stdout: '[{"id": "s1"}]' });
 
       const transport = new K8sTransport(defaultConfig);
       const result = await transport.sessionSearch({ where: { uid: "john" } });

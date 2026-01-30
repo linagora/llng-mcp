@@ -702,9 +702,7 @@ Log      : Test config`;
 
       expect(spawnCalls).toHaveLength(1);
       const remoteCmd = spawnCalls[0].args[1];
-      expect(remoteCmd).toBe(
-        "docker exec sso-auth-1 '/opt/llng/bin/lemonldap-ng-cli' 'info'",
-      );
+      expect(remoteCmd).toBe("docker exec sso-auth-1 '/opt/llng/bin/lemonldap-ng-cli' 'info'");
     });
   });
 });

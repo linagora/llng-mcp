@@ -265,7 +265,8 @@ function applyEnvOverrides(config: LlngConfig): void {
   if (process.env.LLNG_SSH_USER) ensureSsh().user = process.env.LLNG_SSH_USER;
   if (process.env.LLNG_SSH_PORT) ensureSsh().port = parseInt(process.env.LLNG_SSH_PORT, 10);
   if (process.env.LLNG_SSH_SUDO) ensureSsh().sudo = process.env.LLNG_SSH_SUDO;
-  if (process.env.LLNG_SSH_REMOTE_COMMAND) ensureSsh().remoteCommand = process.env.LLNG_SSH_REMOTE_COMMAND;
+  if (process.env.LLNG_SSH_REMOTE_COMMAND)
+    ensureSsh().remoteCommand = process.env.LLNG_SSH_REMOTE_COMMAND;
   if (process.env.LLNG_SSH_BIN_PREFIX) ensureSsh().binPrefix = process.env.LLNG_SSH_BIN_PREFIX;
   if (process.env.LLNG_SSH_CLI_PATH) ensureSsh().cliPath = process.env.LLNG_SSH_CLI_PATH;
   if (process.env.LLNG_SSH_SESSIONS_PATH)
@@ -303,7 +304,8 @@ function applyEnvOverrides(config: LlngConfig): void {
   if (process.env.LLNG_K8S_NAMESPACE) ensureK8s().namespace = process.env.LLNG_K8S_NAMESPACE;
   if (process.env.LLNG_K8S_DEPLOYMENT) ensureK8s().deployment = process.env.LLNG_K8S_DEPLOYMENT;
   if (process.env.LLNG_K8S_CONTAINER) ensureK8s().container = process.env.LLNG_K8S_CONTAINER;
-  if (process.env.LLNG_K8S_POD_SELECTOR) ensureK8s().podSelector = process.env.LLNG_K8S_POD_SELECTOR;
+  if (process.env.LLNG_K8S_POD_SELECTOR)
+    ensureK8s().podSelector = process.env.LLNG_K8S_POD_SELECTOR;
   if (process.env.LLNG_K8S_BIN_PREFIX) ensureK8s().binPrefix = process.env.LLNG_K8S_BIN_PREFIX;
 
   if (process.env.LLNG_OIDC_ISSUER) {

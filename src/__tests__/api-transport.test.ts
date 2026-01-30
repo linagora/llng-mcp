@@ -730,4 +730,17 @@ describe("ApiTransport", () => {
       expect(body.arrayField).toEqual([4, 5]);
     });
   });
+
+  describe("execScript", () => {
+    it("should throw for execScript", async () => {
+      const transport = new ApiTransport({
+        baseUrl: "https://auth.example.com",
+        verifySsl: true,
+      });
+
+      await expect(transport.execScript("rotateOidcKeys", [])).rejects.toThrow(
+        "execScript is not supported via API. Use SSH or K8s mode.",
+      );
+    });
+  });
 });

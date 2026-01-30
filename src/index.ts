@@ -9,7 +9,9 @@ import { registerSessionTools } from "./tools/sessions.js";
 import { registerSecondFactorTools } from "./tools/secondfactors.js";
 import { registerConsentTools } from "./tools/consents.js";
 import { registerOidcTools } from "./tools/oidc.js";
+import { registerOidcRpTools } from "./tools/oidc-rp.js";
 import { registerInstanceTools } from "./tools/instances.js";
+import { registerCliUtilityTools } from "./tools/cli-utilities.js";
 import { registerDocumentationResource } from "./resources/documentation.js";
 
 async function main() {
@@ -28,7 +30,9 @@ async function main() {
   registerSecondFactorTools(server, registry);
   registerConsentTools(server, registry);
   registerOidcTools(server, registry);
+  registerOidcRpTools(server, registry);
   registerInstanceTools(server, registry);
+  registerCliUtilityTools(server, registry);
 
   // Register resources
   registerDocumentationResource(server);

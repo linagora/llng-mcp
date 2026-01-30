@@ -5,6 +5,8 @@ import { registerSessionTools } from "../tools/sessions.js";
 import { registerSecondFactorTools } from "../tools/secondfactors.js";
 import { registerConsentTools } from "../tools/consents.js";
 import { registerOidcTools } from "../tools/oidc.js";
+import { registerOidcRpTools } from "../tools/oidc-rp.js";
+import { registerCliUtilityTools } from "../tools/cli-utilities.js";
 import { TransportRegistry } from "../transport/registry.js";
 
 describe("Tool Registration", () => {
@@ -44,6 +46,7 @@ describe("Tool Registration", () => {
       consentsGet: vi.fn().mockResolvedValue([]),
       consentsDelete: vi.fn().mockResolvedValue(undefined),
       configTestEmail: vi.fn().mockResolvedValue(undefined),
+      execScript: vi.fn().mockResolvedValue("script output"),
     };
 
     const registry = {
@@ -330,6 +333,248 @@ describe("Tool Registration", () => {
 
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toBe("Error: OIDC not configured");
+    });
+  });
+
+  describe("OIDC RP Tools", () => {
+    it("should register 5 OIDC RP tools", () => {
+      const { mockServer, toolNames } = createMockServer();
+      const { registry } = createMockRegistry();
+
+      registerOidcRpTools(mockServer, registry);
+
+      expect(toolNames).toHaveLength(5);
+      expect(toolNames).toEqual([
+        "llng_oidc_issuer_enable",
+        "llng_oidc_rp_list",
+        "llng_oidc_rp_get",
+        "llng_oidc_rp_add",
+        "llng_oidc_rp_delete",
+      ]);
+    });
+
+    it("should return empty list when no RPs configured", async () => {
+      const { mockServer } = createMockServer();
+      const { registry, mockTransport } = createMockRegistry();
+
+      mockTransport.configGet = vi.fn().mockResolvedValue({ oidcRPMetaDataOptions: null });
+
+      registerOidcRpTools(mockServer, registry);
+
+      const toolCall = (mockServer.tool as any).mock.calls.find(
+        (call: any) => call[0] === "llng_oidc_rp_list",
+      );
+      const handler = toolCall[3];
+      const result = await handler({});
+
+      expect(result.content[0].text).toBe(JSON.stringify([], null, 2));
+    });
+
+    it("should fetch top-level keys and extract confKey for rp_get", async () => {
+      const { mockServer } = createMockServer();
+      const { registry, mockTransport } = createMockRegistry();
+
+      mockTransport.configGet = vi.fn().mockResolvedValue({
+        oidcRPMetaDataOptions: { myApp: { oidcRPMetaDataOptionsClientID: "client1" } },
+        oidcRPMetaDataExportedVars: { myApp: { name: "cn" } },
+        oidcRPMetaDataMacros: {},
+        oidcRPMetaDataScopeRules: {},
+        oidcRPMetaDataOptionsExtraClaims: {},
+      });
+
+      registerOidcRpTools(mockServer, registry);
+
+      const toolCall = (mockServer.tool as any).mock.calls.find(
+        (call: any) => call[0] === "llng_oidc_rp_get",
+      );
+      const handler = toolCall[3];
+      const result = await handler({ confKey: "myApp" });
+
+      expect(result.content[0].text).toContain("client1");
+      // Verify it fetches top-level keys, not slash-separated
+      expect(mockTransport.configGet).toHaveBeenCalledWith([
+        "oidcRPMetaDataOptions",
+        "oidcRPMetaDataExportedVars",
+        "oidcRPMetaDataMacros",
+        "oidcRPMetaDataScopeRules",
+        "oidcRPMetaDataOptionsExtraClaims",
+      ]);
+    });
+
+    it("should handle transport errors with isError flag", async () => {
+      const { mockServer } = createMockServer();
+      const { registry, mockTransport } = createMockRegistry();
+
+      mockTransport.configGet = vi.fn().mockRejectedValue(new Error("Transport error"));
+
+      registerOidcRpTools(mockServer, registry);
+
+      const toolCall = (mockServer.tool as any).mock.calls.find(
+        (call: any) => call[0] === "llng_oidc_rp_list",
+      );
+      const handler = toolCall[3];
+      const result = await handler({});
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain("Transport error");
+    });
+
+    it("should enable OIDC issuer when not activated", async () => {
+      const { mockServer } = createMockServer();
+      const { registry, mockTransport } = createMockRegistry();
+
+      mockTransport.configGet = vi.fn().mockResolvedValue({
+        issuerDBOpenIDConnectActivation: 0,
+        oidcServicePrivateKeySig: "",
+      });
+
+      registerOidcRpTools(mockServer, registry);
+
+      const toolCall = (mockServer.tool as any).mock.calls.find(
+        (call: any) => call[0] === "llng_oidc_issuer_enable",
+      );
+      const handler = toolCall[3];
+      const result = await handler({});
+
+      expect(mockTransport.configSet).toHaveBeenCalledWith({ issuerDBOpenIDConnectActivation: 1 });
+      expect(mockTransport.execScript).toHaveBeenCalledWith("rotateOidcKeys", []);
+      expect(result.content[0].text).toContain("enabled successfully");
+    });
+
+    it("should refuse rp_add when issuer is not enabled", async () => {
+      const { mockServer } = createMockServer();
+      const { registry, mockTransport } = createMockRegistry();
+
+      mockTransport.configGet = vi.fn().mockResolvedValue({
+        issuerDBOpenIDConnectActivation: 0,
+        oidcServicePrivateKeySig: "",
+      });
+
+      registerOidcRpTools(mockServer, registry);
+
+      const toolCall = (mockServer.tool as any).mock.calls.find(
+        (call: any) => call[0] === "llng_oidc_rp_add",
+      );
+      const handler = toolCall[3];
+      const result = await handler({
+        confKey: "myApp",
+        clientId: "client1",
+        redirectUris: "http://localhost/callback",
+      });
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain("llng_oidc_issuer_enable");
+    });
+
+    it("should add default IDTokenSignAlg when issuer is enabled", async () => {
+      const { mockServer } = createMockServer();
+      const { registry, mockTransport } = createMockRegistry();
+
+      mockTransport.configGet = vi.fn().mockResolvedValue({
+        issuerDBOpenIDConnectActivation: 1,
+        oidcServicePrivateKeySig:
+          "-----BEGIN RSA PRIVATE KEY-----\nfake\n-----END RSA PRIVATE KEY-----",
+      });
+
+      registerOidcRpTools(mockServer, registry);
+
+      const toolCall = (mockServer.tool as any).mock.calls.find(
+        (call: any) => call[0] === "llng_oidc_rp_add",
+      );
+      const handler = toolCall[3];
+      const result = await handler({
+        confKey: "myApp",
+        clientId: "client1",
+        redirectUris: "http://localhost/callback",
+      });
+
+      expect(result.isError).toBeUndefined();
+      expect(result.content[0].text).toContain("added successfully");
+
+      // Verify configMerge was called with IDTokenSignAlg default
+      const mergeCall = mockTransport.configMerge.mock.calls[0][0];
+      const mergeData = JSON.parse(mergeCall);
+      expect(mergeData.oidcRPMetaDataOptions.myApp.oidcRPMetaDataOptionsIDTokenSignAlg).toBe(
+        "RS256",
+      );
+    });
+  });
+
+  describe("CLI Utility Tools", () => {
+    it("should register 7 CLI utility tools", () => {
+      const { mockServer, toolNames } = createMockServer();
+      const { registry } = createMockRegistry();
+
+      registerCliUtilityTools(mockServer, registry);
+
+      expect(toolNames).toHaveLength(7);
+      expect(toolNames).toEqual([
+        "llng_download_saml_metadata",
+        "llng_import_metadata",
+        "llng_delete_session",
+        "llng_user_attributes",
+        "llng_purge_central_cache",
+        "llng_purge_local_cache",
+        "llng_rotate_oidc_keys",
+      ]);
+    });
+
+    it("should call execScript with correct arguments", async () => {
+      const { mockServer } = createMockServer();
+      const { registry, mockTransport } = createMockRegistry();
+
+      registerCliUtilityTools(mockServer, registry);
+
+      const toolCall = (mockServer.tool as any).mock.calls.find(
+        (call: any) => call[0] === "llng_user_attributes",
+      );
+      const handler = toolCall[3];
+      const result = await handler({ username: "john", field: "mail" });
+
+      expect(mockTransport.execScript).toHaveBeenCalledWith("llngUserAttributes", [
+        "--username",
+        "john",
+        "--field",
+        "mail",
+      ]);
+      expect(result.content[0].text).toBe("script output");
+    });
+
+    it("should handle execScript errors with isError flag", async () => {
+      const { mockServer } = createMockServer();
+      const { registry, mockTransport } = createMockRegistry();
+
+      mockTransport.execScript = vi.fn().mockRejectedValue(new Error("Not supported via API"));
+
+      registerCliUtilityTools(mockServer, registry);
+
+      const toolCall = (mockServer.tool as any).mock.calls.find(
+        (call: any) => call[0] === "llng_rotate_oidc_keys",
+      );
+      const handler = toolCall[3];
+      const result = await handler({});
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain("Not supported via API");
+    });
+
+    it("should handle boolean flags correctly", async () => {
+      const { mockServer } = createMockServer();
+      const { registry, mockTransport } = createMockRegistry();
+
+      registerCliUtilityTools(mockServer, registry);
+
+      const toolCall = (mockServer.tool as any).mock.calls.find(
+        (call: any) => call[0] === "llng_purge_central_cache",
+      );
+      const handler = toolCall[3];
+      await handler({ debug: true, force: true, json: true });
+
+      expect(mockTransport.execScript).toHaveBeenCalledWith("purgeCentralCache", [
+        "--debug",
+        "--force",
+        "--json",
+      ]);
     });
   });
 

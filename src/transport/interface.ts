@@ -53,4 +53,6 @@ export interface ILlngTransport {
 
   consentsGet(user: string): Promise<any[]>;
   consentsDelete(user: string, ids: string[]): Promise<void>;
+
+  execScript(scriptName: string, args: string[]): Promise<string>;
 }

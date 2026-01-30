@@ -90,14 +90,16 @@ Log      : Test config`;
     });
 
     it("configGet passes keys correctly", async () => {
-      setupSpawnMock("domain = example.com\nportal = https://portal.example.com");
+      setupSpawnMock(
+        JSON.stringify({ domain: "example.com", portal: "https://portal.example.com" }),
+      );
 
       const transport = new SshTransport(defaultConfig);
       const result = await transport.configGet(["domain", "portal"]);
 
       expect(spawnCalls).toHaveLength(1);
       expect(spawnCalls[0].cmd).toBe("/usr/share/lemonldap-ng/bin/lemonldap-ng-cli");
-      expect(spawnCalls[0].args).toEqual(["get", "domain", "portal"]);
+      expect(spawnCalls[0].args).toEqual(["-json", "get", "domain", "portal"]);
       expect(result).toEqual({ domain: "example.com", portal: "https://portal.example.com" });
     });
 
@@ -784,6 +786,20 @@ Log      : Test config`;
       expect(spawnCalls).toHaveLength(1);
       const remoteCmd = spawnCalls[0].args[1];
       expect(remoteCmd).toBe("docker exec sso-auth-1 '/opt/llng/bin/lemonldap-ng-cli' 'info'");
+    });
+  });
+
+  describe("execScript", () => {
+    it("execScript runs script from binPrefix directory", async () => {
+      setupSpawnMock("Keys rotated successfully");
+
+      const transport = new SshTransport(defaultConfig);
+      const result = await transport.execScript("rotateOidcKeys", []);
+
+      expect(spawnCalls).toHaveLength(1);
+      expect(spawnCalls[0].cmd).toBe("/usr/share/lemonldap-ng/bin/rotateOidcKeys");
+      expect(spawnCalls[0].args).toEqual([]);
+      expect(result).toBe("Keys rotated successfully");
     });
   });
 });

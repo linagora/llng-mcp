@@ -98,7 +98,7 @@ describe("K8sTransport", () => {
       setupSpawnMock(
         { stdout: "lemonldap-ng-abc123" },
         { stdout: "Num      : 42\nAuthor   : admin\nDate     : 2025-01-30" },
-        { stdout: "domain = example.com" },
+        { stdout: JSON.stringify({ domain: "example.com" }) },
       );
 
       const transport = new K8sTransport(defaultConfig);
@@ -224,7 +224,7 @@ describe("K8sTransport", () => {
     it("configGet passes keys", async () => {
       setupSpawnMock(
         { stdout: "llng-pod-123" },
-        { stdout: "domain = example.com\nportal = https://portal.example.com" },
+        { stdout: JSON.stringify({ domain: "example.com", portal: "https://portal.example.com" }) },
       );
 
       const transport = new K8sTransport(defaultConfig);
@@ -316,6 +316,27 @@ describe("K8sTransport", () => {
       const execCall = spawnCalls[1];
       expect(execCall.args).toContain("-i");
       expect(execCall.args).toContain("restore");
+    });
+  });
+
+  describe("execScript", () => {
+    it("executes script with default binPrefix", async () => {
+      setupSpawnMock({ stdout: "lemonldap-ng-abc123" }, { stdout: "Keys rotated successfully" });
+
+      const transport = new K8sTransport(defaultConfig);
+      const result = await transport.execScript("rotateOidcKeys", []);
+
+      // First call is pod resolution
+      expect(spawnCalls[0].cmd).toBe("kubectl");
+      expect(spawnCalls[0].args).toContain("get");
+      expect(spawnCalls[0].args).toContain("pods");
+
+      // Second call is the exec with the script
+      expect(spawnCalls[1].cmd).toBe("kubectl");
+      expect(spawnCalls[1].args).toContain("exec");
+      expect(spawnCalls[1].args).toContain("/usr/share/lemonldap-ng/bin/rotateOidcKeys");
+
+      expect(result).toBe("Keys rotated successfully");
     });
   });
 });

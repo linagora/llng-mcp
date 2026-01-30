@@ -240,17 +240,8 @@ export class SshTransport implements ILlngTransport {
   }
 
   async configGet(keys: string[]): Promise<Record<string, any>> {
-    const output = await this.execCli(["get", ...keys]);
-    // Parse text output like "portal = http://auth.example.com/\ndomain = example.com"
-    const result: Record<string, any> = {};
-    const lines = output.trim().split("\n");
-    for (const line of lines) {
-      const match = line.match(/^(\S+)\s+=\s+(.*)$/);
-      if (match) {
-        result[match[1]] = match[2];
-      }
-    }
-    return result;
+    const output = await this.execCli(["-json", "get", ...keys]);
+    return JSON.parse(output);
   }
 
   async configSet(pairs: Record<string, any>, log?: string): Promise<void> {
@@ -430,5 +421,10 @@ export class SshTransport implements ILlngTransport {
 
   async consentsDelete(_user: string, _ids: string[]): Promise<void> {
     throw new Error("consentsDelete is not supported via CLI. Use API mode.");
+  }
+
+  async execScript(scriptName: string, args: string[]): Promise<string> {
+    const prefix = this.config.binPrefix || "/usr/share/lemonldap-ng/bin";
+    return this.exec([`${prefix}/${scriptName}`, ...args]);
   }
 }

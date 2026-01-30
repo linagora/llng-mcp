@@ -2,6 +2,7 @@ import { LlngMultiConfig, LlngInstanceConfig, OidcConfig } from "../config.js";
 import { ILlngTransport } from "./interface.js";
 import { ApiTransport } from "./api.js";
 import { SshTransport } from "./ssh.js";
+import { K8sTransport } from "./k8s.js";
 
 export class TransportRegistry {
   private transports = new Map<string, ILlngTransport>();
@@ -36,14 +37,15 @@ export class TransportRegistry {
           );
         }
         transport = new ApiTransport(config.api);
+      } else if (config.mode === "k8s") {
+        if (!config.k8s) {
+          throw new Error(
+            `Instance '${name}' is configured for K8s mode but has no 'k8s' configuration`,
+          );
+        }
+        transport = new K8sTransport(config.k8s);
       } else {
-        transport = new SshTransport(
-          config.ssh ?? {
-            cliPath: "/usr/share/lemonldap-ng/bin/lemonldap-ng-cli",
-            sessionsPath: "/usr/share/lemonldap-ng/bin/lemonldap-ng-sessions",
-            configEditorPath: "/usr/share/lemonldap-ng/bin/lmConfigEditor",
-          },
-        );
+        transport = new SshTransport(config.ssh ?? {});
       }
       this.transports.set(name, transport);
     }

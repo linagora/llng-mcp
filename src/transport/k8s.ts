@@ -1,81 +1,48 @@
 import { spawn } from "child_process";
-import { SshConfig, resolvePaths } from "../config.js";
+import { K8sConfig, resolvePaths } from "../config.js";
 import { ILlngTransport, SessionFilter, ConfigInfo } from "./interface.js";
 
-export class SshTransport implements ILlngTransport {
+export class K8sTransport implements ILlngTransport {
   private paths: { cliPath: string; sessionsPath: string; configEditorPath: string };
+  private cachedPodName: string | null = null;
 
-  constructor(private config: SshConfig) {
-    this.paths = resolvePaths(
-      config.binPrefix,
-      config.cliPath,
-      config.sessionsPath,
-      config.configEditorPath,
-    );
+  constructor(private config: K8sConfig) {
+    this.paths = resolvePaths(config.binPrefix);
   }
 
-  private async exec(args: string[], env?: Record<string, string>): Promise<string> {
+  private async resolvePod(): Promise<string> {
+    if (this.cachedPodName) {
+      return this.cachedPodName;
+    }
+
+    if (!this.config.namespace) {
+      throw new Error("K8s namespace is required but not configured");
+    }
+    if (!this.config.deployment && !this.config.podSelector) {
+      throw new Error("K8s deployment or podSelector is required but not configured");
+    }
+    const selector = this.config.podSelector || `app.kubernetes.io/name=${this.config.deployment}`;
+    const args = ["get", "pods", "-l", selector, "-o", "jsonpath={.items[0].metadata.name}"];
+
+    if (this.config.context) {
+      args.unshift("--context", this.config.context);
+    }
+    args.unshift("-n", this.config.namespace!);
+
+    const podName = await this.kubectl(args);
+    if (!podName || podName === "{}" || podName.trim() === "") {
+      throw new Error(
+        `No pod found for selector '${selector}' in namespace '${this.config.namespace}'`,
+      );
+    }
+
+    this.cachedPodName = podName.trim();
+    return this.cachedPodName;
+  }
+
+  private async kubectl(args: string[]): Promise<string> {
     return new Promise((resolve, reject) => {
-      let cmd: string;
-      let cmdArgs: string[];
-
-      if (this.config.host) {
-        // SSH mode
-        cmd = "ssh";
-        cmdArgs = [];
-
-        if (this.config.port) {
-          cmdArgs.push("-p", this.config.port.toString());
-        }
-
-        const hostSpec = this.config.user
-          ? `${this.config.user}@${this.config.host}`
-          : this.config.host;
-        cmdArgs.push(hostSpec);
-
-        // Build the remote command
-        let remoteCmd = args.map((arg) => this.shellQuote(arg)).join(" ");
-
-        // If env vars are provided, prefix with env command
-        if (env) {
-          const envPrefix = Object.entries(env)
-            .map(([k, v]) => `${k}=${this.shellQuote(v)}`)
-            .join(" ");
-          remoteCmd = `env ${envPrefix} ${remoteCmd}`;
-        }
-
-        // Insert remoteCommand between sudo and the LLNG command
-        if (this.config.remoteCommand) {
-          remoteCmd = `${this.config.remoteCommand} ${remoteCmd}`;
-        }
-
-        if (this.config.sudo) {
-          remoteCmd = `sudo -u ${this.shellQuote(this.config.sudo)} ${remoteCmd}`;
-        }
-
-        cmdArgs.push(remoteCmd);
-      } else {
-        // Local mode
-        if (this.config.sudo) {
-          cmd = "sudo";
-          cmdArgs = ["-u", this.config.sudo];
-          if (this.config.remoteCommand) {
-            cmdArgs.push(...this.config.remoteCommand.split(" "), ...args);
-          } else {
-            cmdArgs.push(...args);
-          }
-        } else if (this.config.remoteCommand) {
-          const parts = this.config.remoteCommand.split(" ");
-          cmd = parts[0];
-          cmdArgs = [...parts.slice(1), ...args];
-        } else {
-          cmd = args[0];
-          cmdArgs = args.slice(1);
-        }
-      }
-
-      const spawnOpts = env ? { env: { ...process.env, ...env } } : undefined;
-      const proc = spawn(cmd, cmdArgs, spawnOpts);
+      const proc = spawn("kubectl", args);
       let stdout = "";
 
       proc.stdout.on("data", (data) => {
@@ -83,75 +50,26 @@ export class SshTransport implements ILlngTransport {
       });
 
       proc.stderr.on("data", () => {
-        // stderr is consumed but not exposed to clients for security
+        // stderr consumed for security
       });
 
       proc.on("close", (code) => {
         if (code !== 0) {
-          reject(new Error(`Command failed with exit code ${code}`));
+          reject(new Error(`kubectl command failed with exit code ${code}`));
         } else {
           resolve(stdout);
         }
       });
 
       proc.on("error", () => {
-        reject(new Error("Command execution failed"));
+        reject(new Error("kubectl command execution failed"));
       });
     });
   }
 
-  private async execWithStdin(args: string[], input: string): Promise<string> {
+  private async kubectlWithStdin(args: string[], input: string): Promise<string> {
     return new Promise((resolve, reject) => {
-      let cmd: string;
-      let cmdArgs: string[];
-
-      if (this.config.host) {
-        // SSH mode
-        cmd = "ssh";
-        cmdArgs = [];
-
-        if (this.config.port) {
-          cmdArgs.push("-p", this.config.port.toString());
-        }
-
-        const hostSpec = this.config.user
-          ? `${this.config.user}@${this.config.host}`
-          : this.config.host;
-        cmdArgs.push(hostSpec);
-
-        // Build the remote command
-        let remoteCmd = args.map((arg) => this.shellQuote(arg)).join(" ");
-
-        if (this.config.remoteCommand) {
-          remoteCmd = `${this.config.remoteCommand} ${remoteCmd}`;
-        }
-
-        if (this.config.sudo) {
-          remoteCmd = `sudo -u ${this.shellQuote(this.config.sudo)} ${remoteCmd}`;
-        }
-
-        cmdArgs.push(remoteCmd);
-      } else {
-        // Local mode
-        if (this.config.sudo) {
-          cmd = "sudo";
-          cmdArgs = ["-u", this.config.sudo];
-          if (this.config.remoteCommand) {
-            cmdArgs.push(...this.config.remoteCommand.split(" "), ...args);
-          } else {
-            cmdArgs.push(...args);
-          }
-        } else if (this.config.remoteCommand) {
-          const parts = this.config.remoteCommand.split(" ");
-          cmd = parts[0];
-          cmdArgs = [...parts.slice(1), ...args];
-        } else {
-          cmd = args[0];
-          cmdArgs = args.slice(1);
-        }
-      }
-
-      const proc = spawn(cmd, cmdArgs);
+      const proc = spawn("kubectl", args);
       let stdout = "";
 
       proc.stdout.on("data", (data) => {
@@ -159,30 +77,70 @@ export class SshTransport implements ILlngTransport {
       });
 
       proc.stderr.on("data", () => {
-        // stderr is consumed but not exposed to clients for security
+        // stderr consumed for security
       });
 
       proc.on("close", (code) => {
         if (code !== 0) {
-          reject(new Error(`Command failed with exit code ${code}`));
+          reject(new Error(`kubectl command failed with exit code ${code}`));
         } else {
           resolve(stdout);
         }
       });
 
       proc.on("error", () => {
-        reject(new Error("Command execution failed"));
+        reject(new Error("kubectl command execution failed"));
       });
 
-      // Write input to stdin
       proc.stdin.write(input);
       proc.stdin.end();
     });
   }
 
-  private shellQuote(arg: string): string {
-    // Simple shell quoting - escape single quotes and wrap in single quotes
-    return `'${arg.replace(/'/g, "'\\''")}'`;
+  private buildExecArgs(podName: string, command: string[]): string[] {
+    const args: string[] = [];
+
+    if (this.config.context) {
+      args.push("--context", this.config.context);
+    }
+    args.push("-n", this.config.namespace!);
+    args.push("exec", podName);
+
+    if (this.config.container) {
+      args.push("-c", this.config.container);
+    }
+
+    args.push("--", ...command);
+    return args;
+  }
+
+  private buildExecStdinArgs(podName: string, command: string[]): string[] {
+    const args: string[] = [];
+
+    if (this.config.context) {
+      args.push("--context", this.config.context);
+    }
+    args.push("-n", this.config.namespace!);
+    args.push("exec", "-i", podName);
+
+    if (this.config.container) {
+      args.push("-c", this.config.container);
+    }
+
+    args.push("--", ...command);
+    return args;
+  }
+
+  private async exec(command: string[]): Promise<string> {
+    const podName = await this.resolvePod();
+    const args = this.buildExecArgs(podName, command);
+    return this.kubectl(args);
+  }
+
+  private async execWithStdin(command: string[], input: string): Promise<string> {
+    const podName = await this.resolvePod();
+    const args = this.buildExecStdinArgs(podName, command);
+    return this.kubectlWithStdin(args, input);
   }
 
   private async execCli(subArgs: string[]): Promise<string> {
@@ -193,14 +151,9 @@ export class SshTransport implements ILlngTransport {
     return this.exec([this.paths.sessionsPath, ...subArgs]);
   }
 
-  private async execConfigEditor(subArgs: string[]): Promise<string> {
-    return this.exec([this.paths.configEditorPath, ...subArgs], { EDITOR: "cat" });
-  }
-
   // Config methods
   async configInfo(): Promise<ConfigInfo> {
     const output = await this.execCli(["info"]);
-    // Parse text output like "Num      : 1\nAuthor   : The LemonLDAP::NG team\n..."
     const lines = output.trim().split("\n");
     const data: Record<string, string> = {};
     for (const line of lines) {
@@ -219,7 +172,6 @@ export class SshTransport implements ILlngTransport {
 
   async configGet(keys: string[]): Promise<Record<string, any>> {
     const output = await this.execCli(["get", ...keys]);
-    // Parse text output like "portal = http://auth.example.com/\ndomain = example.com"
     const result: Record<string, any> = {};
     const lines = output.trim().split("\n");
     for (const line of lines) {
@@ -233,15 +185,12 @@ export class SshTransport implements ILlngTransport {
 
   async configSet(pairs: Record<string, any>, log?: string): Promise<void> {
     const args: string[] = ["set", "-yes", "1"];
-
     for (const [key, value] of Object.entries(pairs)) {
       args.push(key, String(value));
     }
-
     if (log) {
       args.push("-log", log);
     }
-
     await this.execCli(args);
   }
 
@@ -279,42 +228,32 @@ export class SshTransport implements ILlngTransport {
     if (backend) {
       args.push("--backend", backend);
     }
-
     const output = await this.execSessions(args);
     return JSON.parse(output);
   }
 
   async sessionSearch(filters: SessionFilter): Promise<any[]> {
     const args: string[] = ["search"];
-
     if (filters.where) {
       for (const [field, value] of Object.entries(filters.where)) {
         args.push("--where", `${field}=${value}`);
       }
     }
-
     if (filters.select && filters.select.length > 0) {
       args.push("--select", filters.select.join(","));
     }
-
     if (filters.backend) {
       args.push("--backend", filters.backend);
     }
-
     if (filters.count) {
       args.push("--count");
     }
-
     const output = await this.execSessions(args);
     return JSON.parse(output);
   }
 
   async sessionDelete(ids: string[], backend?: string): Promise<void> {
-    // lemonldap-ng-sessions only supports get and search
-    // Use llngDeleteSession script instead
-    const deleteScriptPath =
-      this.config.deleteSessionPath ||
-      this.paths.cliPath.replace("lemonldap-ng-cli", "llngDeleteSession");
+    const deleteScriptPath = this.paths.cliPath.replace("lemonldap-ng-cli", "llngDeleteSession");
     for (const id of ids) {
       const args = [deleteScriptPath, id];
       if (backend) {
@@ -333,7 +272,6 @@ export class SshTransport implements ILlngTransport {
   }
 
   async sessionBackup(_backend?: string): Promise<string> {
-    // Return all sessions as JSON via search with no filters
     const output = await this.execSessions(["search"]);
     return output;
   }

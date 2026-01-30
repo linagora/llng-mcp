@@ -6,7 +6,7 @@ A Model Context Protocol (MCP) server that enables AI assistants to manage and m
 
 ## Overview
 
-llng-mcp bridges AI assistants with Lemonldap-NG, a powerful web SSO (Single Sign-On) system. Through 29 tools and 1 resource, it provides AI-native access to configuration management, session control, multi-factor authentication, OIDC testing, and user consent tracking.
+llng-mcp bridges AI assistants with Lemonldap-NG, a powerful web SSO (Single Sign-On) system. Through 30 tools and 1 resource, it provides AI-native access to configuration management, session control, multi-factor authentication, OIDC testing, and user consent tracking.
 
 ## Features
 
@@ -57,6 +57,10 @@ llng-mcp bridges AI assistants with Lemonldap-NG, a powerful web SSO (Single Sig
 ### Documentation Resource (1 resource)
 
 - **llng-documentation** - Fetch live documentation pages from lemonldap-ng.org
+
+### Instance Discovery (1 tool)
+
+- **llng_instances** - List available LLNG instances and their transport mode
 
 ## Installation
 
@@ -146,6 +150,41 @@ For OIDC testing tools:
 }
 ```
 
+### Multi-Instance Configuration
+
+To manage multiple LLNG instances from a single MCP server, use the `instances` format:
+
+```json
+{
+  "instances": {
+    "prod": {
+      "mode": "api",
+      "api": {
+        "baseUrl": "https://manager-prod.example.com/api/v1",
+        "basicAuth": { "username": "admin", "password": "secret" }
+      }
+    },
+    "staging": {
+      "mode": "ssh",
+      "ssh": {
+        "host": "staging.example.com",
+        "user": "root"
+      }
+    },
+    "local": {
+      "mode": "ssh"
+    }
+  },
+  "default": "prod"
+}
+```
+
+- **`instances`** - Named LLNG instance configurations, each with its own `mode`, `ssh`, `api`, and `oidc` settings
+- **`default`** - Name of the instance used when the `instance` parameter is omitted (defaults to the first instance if not specified)
+- All tools accept an optional **`instance`** parameter to target a specific instance
+- The legacy flat format (without `instances`) is fully supported and treated as a single "default" instance
+- Environment variables (`LLNG_*`) apply to the default instance only
+
 ### Environment Variables
 
 Configuration can be overridden via environment variables:
@@ -174,6 +213,8 @@ Configuration can be overridden via environment variables:
 - `LLNG_OIDC_CLIENT_SECRET` - OIDC client secret
 - `LLNG_OIDC_REDIRECT_URI` - OIDC redirect URI
 - `LLNG_OIDC_SCOPE` - OIDC scopes
+
+> **Note**: When using multi-instance configuration, environment variables override the **default instance** only.
 
 ## Usage with Claude Desktop
 
@@ -236,6 +277,8 @@ Configure your MCP client to connect to the stdio server. For example, with `cli
 
 ## Tools Reference
 
+> **Note**: All tools accept an optional `instance` parameter (string) to target a specific LLNG instance. When omitted, the default instance is used.
+
 ### Configuration Management
 
 | Tool | Description | Parameters | Mode |
@@ -276,6 +319,12 @@ Configure your MCP client to connect to the stdio server. For example, with `cli
 |------|-------------|------------|------|
 | llng_consent_list | List consents | user (string) | API Only |
 | llng_consent_delete | Revoke consents | user, ids (string[]) | API Only |
+
+### Instance Discovery
+
+| Tool | Description | Parameters | Mode |
+|------|-------------|------------|------|
+| llng_instances | List available instances | None | Both |
 
 ### OIDC Testing
 
@@ -329,7 +378,7 @@ llng-mcp uses an abstraction layer (`ILlngTransport`) with two implementations:
 - **SshTransport** - Executes CLI commands via SSH or locally using child_process
 - **ApiTransport** - Makes HTTP requests to LLNG REST API
 
-All tools use the transport abstraction, allowing seamless switching between modes.
+A `TransportRegistry` manages transport instances per named configuration, enabling multi-instance support. All tools resolve their transport through the registry, allowing seamless switching between modes and instances.
 
 ## Limitations
 

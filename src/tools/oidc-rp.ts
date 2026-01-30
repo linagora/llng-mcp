@@ -203,6 +203,7 @@ export function registerOidcRpTools(server: McpServer, registry: TransportRegist
           oidcRPMetaDataOptionsClientID: args.clientId,
           oidcRPMetaDataOptionsRedirectUris: args.redirectUris,
           oidcRPMetaDataOptionsIDTokenSignAlg: "RS256",
+          oidcRPMetaDataOptionsAccessTokenClaims: 1,
           ...(args.options || {}),
         };
 

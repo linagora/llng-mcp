@@ -497,6 +497,7 @@ describe("Tool Registration", () => {
       expect(mergeData.oidcRPMetaDataOptions.myApp.oidcRPMetaDataOptionsIDTokenSignAlg).toBe(
         "RS256",
       );
+      expect(mergeData.oidcRPMetaDataOptions.myApp.oidcRPMetaDataOptionsAccessTokenClaims).toBe(1);
     });
   });
 

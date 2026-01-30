@@ -337,14 +337,15 @@ describe("Tool Registration", () => {
   });
 
   describe("OIDC RP Tools", () => {
-    it("should register 4 OIDC RP tools", () => {
+    it("should register 5 OIDC RP tools", () => {
       const { mockServer, toolNames } = createMockServer();
       const { registry } = createMockRegistry();
 
       registerOidcRpTools(mockServer, registry);
 
-      expect(toolNames).toHaveLength(4);
+      expect(toolNames).toHaveLength(5);
       expect(toolNames).toEqual([
+        "llng_oidc_issuer_enable",
         "llng_oidc_rp_list",
         "llng_oidc_rp_get",
         "llng_oidc_rp_add",
@@ -416,6 +417,86 @@ describe("Tool Registration", () => {
 
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toContain("Transport error");
+    });
+
+    it("should enable OIDC issuer when not activated", async () => {
+      const { mockServer } = createMockServer();
+      const { registry, mockTransport } = createMockRegistry();
+
+      mockTransport.configGet = vi.fn().mockResolvedValue({
+        issuerDBOpenIDConnectActivation: 0,
+        oidcServicePrivateKeySig: "",
+      });
+
+      registerOidcRpTools(mockServer, registry);
+
+      const toolCall = (mockServer.tool as any).mock.calls.find(
+        (call: any) => call[0] === "llng_oidc_issuer_enable",
+      );
+      const handler = toolCall[3];
+      const result = await handler({});
+
+      expect(mockTransport.configSet).toHaveBeenCalledWith({ issuerDBOpenIDConnectActivation: 1 });
+      expect(mockTransport.execScript).toHaveBeenCalledWith("rotateOidcKeys", []);
+      expect(result.content[0].text).toContain("enabled successfully");
+    });
+
+    it("should refuse rp_add when issuer is not enabled", async () => {
+      const { mockServer } = createMockServer();
+      const { registry, mockTransport } = createMockRegistry();
+
+      mockTransport.configGet = vi.fn().mockResolvedValue({
+        issuerDBOpenIDConnectActivation: 0,
+        oidcServicePrivateKeySig: "",
+      });
+
+      registerOidcRpTools(mockServer, registry);
+
+      const toolCall = (mockServer.tool as any).mock.calls.find(
+        (call: any) => call[0] === "llng_oidc_rp_add",
+      );
+      const handler = toolCall[3];
+      const result = await handler({
+        confKey: "myApp",
+        clientId: "client1",
+        redirectUris: "http://localhost/callback",
+      });
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain("llng_oidc_issuer_enable");
+    });
+
+    it("should add default IDTokenSignAlg when issuer is enabled", async () => {
+      const { mockServer } = createMockServer();
+      const { registry, mockTransport } = createMockRegistry();
+
+      mockTransport.configGet = vi.fn().mockResolvedValue({
+        issuerDBOpenIDConnectActivation: 1,
+        oidcServicePrivateKeySig:
+          "-----BEGIN RSA PRIVATE KEY-----\nfake\n-----END RSA PRIVATE KEY-----",
+      });
+
+      registerOidcRpTools(mockServer, registry);
+
+      const toolCall = (mockServer.tool as any).mock.calls.find(
+        (call: any) => call[0] === "llng_oidc_rp_add",
+      );
+      const handler = toolCall[3];
+      const result = await handler({
+        confKey: "myApp",
+        clientId: "client1",
+        redirectUris: "http://localhost/callback",
+      });
+
+      expect(result.isError).toBeUndefined();
+      expect(result.content[0].text).toContain("added successfully");
+
+      // Verify configMerge was called with IDTokenSignAlg default
+      const mergeCall = mockTransport.configMerge.mock.calls[0][0];
+      const mergeData = JSON.parse(mergeCall);
+      expect(mergeData.oidcRPMetaDataOptions.myApp.oidcRPMetaDataOptionsIDTokenSignAlg).toBe(
+        "RS256",
+      );
     });
   });
 

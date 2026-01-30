@@ -14,6 +14,60 @@ const RP_CONFIG_KEYS = [
  * Register OIDC Relying Party management tools
  */
 export function registerOidcRpTools(server: McpServer, registry: TransportRegistry): void {
+  // 0. llng_oidc_issuer_enable - Enable OIDC issuer
+  server.tool(
+    "llng_oidc_issuer_enable",
+    "Enable OIDC issuer on the LLNG instance (activates issuerDBOpenIDConnectActivation and generates signing keys)",
+    {
+      force: z.boolean().optional().describe("Force re-enable even if already activated"),
+      instance: z.string().optional().describe("LLNG instance name (uses default if omitted)"),
+    },
+    async (args) => {
+      try {
+        const transport = registry.getTransport(args.instance, "manager");
+        const config = await transport.configGet([
+          "issuerDBOpenIDConnectActivation",
+          "oidcServicePrivateKeySig",
+        ]);
+
+        const isActivated =
+          config["issuerDBOpenIDConnectActivation"] === 1 ||
+          config["issuerDBOpenIDConnectActivation"] === "1";
+        const hasKey =
+          typeof config["oidcServicePrivateKeySig"] === "string" &&
+          config["oidcServicePrivateKeySig"].length > 0;
+
+        if (isActivated && hasKey && !args.force) {
+          return {
+            content: [{ type: "text", text: "OIDC issuer is already enabled." }],
+          };
+        }
+
+        await transport.configSet({ issuerDBOpenIDConnectActivation: 1 });
+        await transport.execScript("rotateOidcKeys", []);
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: "OIDC issuer enabled successfully. Signing keys have been generated.",
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+          isError: true,
+        };
+      }
+    },
+  );
+
   // 1. llng_oidc_rp_list - List OIDC Relying Parties
   server.tool(
     "llng_oidc_rp_list",
@@ -121,9 +175,34 @@ export function registerOidcRpTools(server: McpServer, registry: TransportRegist
       try {
         const transport = registry.getTransport(args.instance, "manager");
 
+        // Check OIDC issuer prerequisites
+        const issuerConfig = await transport.configGet([
+          "issuerDBOpenIDConnectActivation",
+          "oidcServicePrivateKeySig",
+        ]);
+        const isActivated =
+          issuerConfig["issuerDBOpenIDConnectActivation"] === 1 ||
+          issuerConfig["issuerDBOpenIDConnectActivation"] === "1";
+        const hasKey =
+          typeof issuerConfig["oidcServicePrivateKeySig"] === "string" &&
+          issuerConfig["oidcServicePrivateKeySig"].length > 0;
+
+        if (!isActivated || !hasKey) {
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: "Error: OIDC issuer is not enabled or signing keys are missing. Use llng_oidc_issuer_enable first.",
+              },
+            ],
+            isError: true,
+          };
+        }
+
         const rpOptions: Record<string, string | number | boolean> = {
           oidcRPMetaDataOptionsClientID: args.clientId,
           oidcRPMetaDataOptionsRedirectUris: args.redirectUris,
+          oidcRPMetaDataOptionsIDTokenSignAlg: "RS256",
           ...(args.options || {}),
         };
 

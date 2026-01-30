@@ -5,6 +5,8 @@ import { registerSessionTools } from "../tools/sessions.js";
 import { registerSecondFactorTools } from "../tools/secondfactors.js";
 import { registerConsentTools } from "../tools/consents.js";
 import { registerOidcTools } from "../tools/oidc.js";
+import { registerOidcRpTools } from "../tools/oidc-rp.js";
+import { registerCliUtilityTools } from "../tools/cli-utilities.js";
 import { TransportRegistry } from "../transport/registry.js";
 
 describe("Tool Registration", () => {
@@ -44,6 +46,7 @@ describe("Tool Registration", () => {
       consentsGet: vi.fn().mockResolvedValue([]),
       consentsDelete: vi.fn().mockResolvedValue(undefined),
       configTestEmail: vi.fn().mockResolvedValue(undefined),
+      execScript: vi.fn().mockResolvedValue("script output"),
     };
 
     const registry = {
@@ -330,6 +333,167 @@ describe("Tool Registration", () => {
 
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toBe("Error: OIDC not configured");
+    });
+  });
+
+  describe("OIDC RP Tools", () => {
+    it("should register 4 OIDC RP tools", () => {
+      const { mockServer, toolNames } = createMockServer();
+      const { registry } = createMockRegistry();
+
+      registerOidcRpTools(mockServer, registry);
+
+      expect(toolNames).toHaveLength(4);
+      expect(toolNames).toEqual([
+        "llng_oidc_rp_list",
+        "llng_oidc_rp_get",
+        "llng_oidc_rp_add",
+        "llng_oidc_rp_delete",
+      ]);
+    });
+
+    it("should return empty list when no RPs configured", async () => {
+      const { mockServer } = createMockServer();
+      const { registry, mockTransport } = createMockRegistry();
+
+      mockTransport.configGet = vi.fn().mockResolvedValue({ oidcRPMetaDataOptions: null });
+
+      registerOidcRpTools(mockServer, registry);
+
+      const toolCall = (mockServer.tool as any).mock.calls.find(
+        (call: any) => call[0] === "llng_oidc_rp_list",
+      );
+      const handler = toolCall[3];
+      const result = await handler({});
+
+      expect(result.content[0].text).toBe(JSON.stringify([], null, 2));
+    });
+
+    it("should fetch top-level keys and extract confKey for rp_get", async () => {
+      const { mockServer } = createMockServer();
+      const { registry, mockTransport } = createMockRegistry();
+
+      mockTransport.configGet = vi.fn().mockResolvedValue({
+        oidcRPMetaDataOptions: { myApp: { oidcRPMetaDataOptionsClientID: "client1" } },
+        oidcRPMetaDataExportedVars: { myApp: { name: "cn" } },
+        oidcRPMetaDataMacros: {},
+        oidcRPMetaDataScopeRules: {},
+        oidcRPMetaDataOptionsExtraClaims: {},
+      });
+
+      registerOidcRpTools(mockServer, registry);
+
+      const toolCall = (mockServer.tool as any).mock.calls.find(
+        (call: any) => call[0] === "llng_oidc_rp_get",
+      );
+      const handler = toolCall[3];
+      const result = await handler({ confKey: "myApp" });
+
+      expect(result.content[0].text).toContain("client1");
+      // Verify it fetches top-level keys, not slash-separated
+      expect(mockTransport.configGet).toHaveBeenCalledWith([
+        "oidcRPMetaDataOptions",
+        "oidcRPMetaDataExportedVars",
+        "oidcRPMetaDataMacros",
+        "oidcRPMetaDataScopeRules",
+        "oidcRPMetaDataOptionsExtraClaims",
+      ]);
+    });
+
+    it("should handle transport errors with isError flag", async () => {
+      const { mockServer } = createMockServer();
+      const { registry, mockTransport } = createMockRegistry();
+
+      mockTransport.configGet = vi.fn().mockRejectedValue(new Error("Transport error"));
+
+      registerOidcRpTools(mockServer, registry);
+
+      const toolCall = (mockServer.tool as any).mock.calls.find(
+        (call: any) => call[0] === "llng_oidc_rp_list",
+      );
+      const handler = toolCall[3];
+      const result = await handler({});
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain("Transport error");
+    });
+  });
+
+  describe("CLI Utility Tools", () => {
+    it("should register 7 CLI utility tools", () => {
+      const { mockServer, toolNames } = createMockServer();
+      const { registry } = createMockRegistry();
+
+      registerCliUtilityTools(mockServer, registry);
+
+      expect(toolNames).toHaveLength(7);
+      expect(toolNames).toEqual([
+        "llng_download_saml_metadata",
+        "llng_import_metadata",
+        "llng_delete_session",
+        "llng_user_attributes",
+        "llng_purge_central_cache",
+        "llng_purge_local_cache",
+        "llng_rotate_oidc_keys",
+      ]);
+    });
+
+    it("should call execScript with correct arguments", async () => {
+      const { mockServer } = createMockServer();
+      const { registry, mockTransport } = createMockRegistry();
+
+      registerCliUtilityTools(mockServer, registry);
+
+      const toolCall = (mockServer.tool as any).mock.calls.find(
+        (call: any) => call[0] === "llng_user_attributes",
+      );
+      const handler = toolCall[3];
+      const result = await handler({ username: "john", field: "mail" });
+
+      expect(mockTransport.execScript).toHaveBeenCalledWith("llngUserAttributes", [
+        "--username",
+        "john",
+        "--field",
+        "mail",
+      ]);
+      expect(result.content[0].text).toBe("script output");
+    });
+
+    it("should handle execScript errors with isError flag", async () => {
+      const { mockServer } = createMockServer();
+      const { registry, mockTransport } = createMockRegistry();
+
+      mockTransport.execScript = vi.fn().mockRejectedValue(new Error("Not supported via API"));
+
+      registerCliUtilityTools(mockServer, registry);
+
+      const toolCall = (mockServer.tool as any).mock.calls.find(
+        (call: any) => call[0] === "llng_rotate_oidc_keys",
+      );
+      const handler = toolCall[3];
+      const result = await handler({});
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain("Not supported via API");
+    });
+
+    it("should handle boolean flags correctly", async () => {
+      const { mockServer } = createMockServer();
+      const { registry, mockTransport } = createMockRegistry();
+
+      registerCliUtilityTools(mockServer, registry);
+
+      const toolCall = (mockServer.tool as any).mock.calls.find(
+        (call: any) => call[0] === "llng_purge_central_cache",
+      );
+      const handler = toolCall[3];
+      await handler({ debug: true, force: true, json: true });
+
+      expect(mockTransport.execScript).toHaveBeenCalledWith("purgeCentralCache", [
+        "--debug",
+        "--force",
+        "--json",
+      ]);
     });
   });
 

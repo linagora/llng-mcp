@@ -67,14 +67,13 @@ export function registerOidcRpTools(server: McpServer, registry: TransportRegist
     async (args) => {
       try {
         const transport = registry.getTransport(args.instance, "manager");
-        const keysToFetch = RP_CONFIG_KEYS.map((k) => `${k}/${args.confKey}`);
-        const data = await transport.configGet(keysToFetch);
+        const data = await transport.configGet([...RP_CONFIG_KEYS]);
 
         const result: Record<string, any> = {};
         for (const key of RP_CONFIG_KEYS) {
-          const fullKey = `${key}/${args.confKey}`;
-          if (data[fullKey] !== undefined) {
-            result[key] = data[fullKey];
+          const container = data[key];
+          if (container && typeof container === "object" && args.confKey in container) {
+            result[key] = (container as Record<string, unknown>)[args.confKey];
           }
         }
 
@@ -113,7 +112,7 @@ export function registerOidcRpTools(server: McpServer, registry: TransportRegist
         ),
       extraClaims: z.record(z.string(), z.string()).optional().describe("Extra claims mappings"),
       options: z
-        .record(z.string(), z.string())
+        .record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
         .optional()
         .describe("Additional raw OIDC RP options"),
       instance: z.string().optional().describe("LLNG instance name (uses default if omitted)"),
@@ -122,7 +121,7 @@ export function registerOidcRpTools(server: McpServer, registry: TransportRegist
       try {
         const transport = registry.getTransport(args.instance, "manager");
 
-        const rpOptions: Record<string, string> = {
+        const rpOptions: Record<string, string | number | boolean> = {
           oidcRPMetaDataOptionsClientID: args.clientId,
           oidcRPMetaDataOptionsRedirectUris: args.redirectUris,
           ...(args.options || {}),

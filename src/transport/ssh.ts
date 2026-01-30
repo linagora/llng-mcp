@@ -66,14 +66,14 @@ export class SshTransport implements ILlngTransport {
 
       proc.on("close", (code) => {
         if (code !== 0) {
-          reject(new Error(`Command failed with exit code ${code}: ${stderr}`));
+          reject(new Error(`Command failed with exit code ${code}`));
         } else {
           resolve(stdout);
         }
       });
 
-      proc.on("error", (err) => {
-        reject(err);
+      proc.on("error", () => {
+        reject(new Error("Command execution failed"));
       });
     });
   }
@@ -130,14 +130,14 @@ export class SshTransport implements ILlngTransport {
 
       proc.on("close", (code) => {
         if (code !== 0) {
-          reject(new Error(`Command failed with exit code ${code}: ${stderr}`));
+          reject(new Error(`Command failed with exit code ${code}`));
         } else {
           resolve(stdout);
         }
       });
 
-      proc.on("error", (err) => {
-        reject(err);
+      proc.on("error", () => {
+        reject(new Error("Command execution failed"));
       });
 
       // Write input to stdin

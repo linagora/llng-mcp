@@ -16,6 +16,9 @@ export class ApiTransport implements ILlngTransport {
 
     // Create agent for SSL verification control
     if (!this.verifySsl) {
+      console.error(
+        "WARNING: SSL certificate verification is disabled. This makes the connection vulnerable to man-in-the-middle attacks. Do not use in production.",
+      );
       this.agent = new https.Agent({
         rejectUnauthorized: false,
       });
@@ -162,6 +165,7 @@ export class ApiTransport implements ILlngTransport {
     const result = { ...target };
 
     for (const key in source) {
+      if (key === "__proto__" || key === "constructor" || key === "prototype") continue;
       if (source[key] instanceof Object && !Array.isArray(source[key])) {
         result[key] = this.deepMerge(result[key] || {}, source[key]);
       } else {
@@ -194,7 +198,7 @@ export class ApiTransport implements ILlngTransport {
 
   async sessionGet(id: string, backend?: string): Promise<Record<string, any>> {
     const backendName = backend || "global";
-    return await this.request("GET", `/api/v1/sessions/${backendName}/${id}`);
+    return await this.request("GET", `/api/v1/sessions/${encodeURIComponent(backendName)}/${encodeURIComponent(id)}`);
   }
 
   async sessionSearch(filters: SessionFilter): Promise<any[]> {
@@ -220,7 +224,7 @@ export class ApiTransport implements ILlngTransport {
     }
 
     const queryString = queryParams.length > 0 ? `?${queryParams.join("&")}` : "";
-    const result = await this.request("GET", `/api/v1/sessions/${backend}${queryString}`);
+    const result = await this.request("GET", `/api/v1/sessions/${encodeURIComponent(backend)}${queryString}`);
 
     // API returns an object with session IDs as keys, convert to array
     if (typeof result === "object" && !Array.isArray(result)) {
@@ -237,12 +241,12 @@ export class ApiTransport implements ILlngTransport {
     const backendName = backend || "global";
 
     for (const id of ids) {
-      await this.request("DELETE", `/api/v1/sessions/${backendName}/${id}`);
+      await this.request("DELETE", `/api/v1/sessions/${encodeURIComponent(backendName)}/${encodeURIComponent(id)}`);
     }
   }
 
   async sessionSetKey(id: string, pairs: Record<string, any>): Promise<void> {
-    await this.request("PUT", `/api/v1/sessions/global/${id}`, pairs);
+    await this.request("PUT", `/api/v1/sessions/global/${encodeURIComponent(id)}`, pairs);
   }
 
   async sessionDelKey(id: string, keys: string[]): Promise<void> {
@@ -250,17 +254,17 @@ export class ApiTransport implements ILlngTransport {
     for (const key of keys) {
       pairs[key] = null;
     }
-    await this.request("PUT", `/api/v1/sessions/global/${id}`, pairs);
+    await this.request("PUT", `/api/v1/sessions/global/${encodeURIComponent(id)}`, pairs);
   }
 
   async sessionBackup(backend?: string): Promise<string> {
     const backendName = backend || "global";
-    const sessions = await this.request("GET", `/api/v1/sessions/${backendName}`);
+    const sessions = await this.request("GET", `/api/v1/sessions/${encodeURIComponent(backendName)}`);
     return JSON.stringify(sessions, null, 2);
   }
 
   async secondFactorsGet(user: string): Promise<any[]> {
-    const result = await this.request("GET", `/api/v1/secondfactors/${user}`);
+    const result = await this.request("GET", `/api/v1/secondfactors/${encodeURIComponent(user)}`);
 
     // API may return object or array, normalize to array
     if (Array.isArray(result)) {
@@ -277,7 +281,7 @@ export class ApiTransport implements ILlngTransport {
 
   async secondFactorsDelete(user: string, ids: string[]): Promise<void> {
     for (const id of ids) {
-      await this.request("DELETE", `/api/v1/secondfactors/${user}/${id}`);
+      await this.request("DELETE", `/api/v1/secondfactors/${encodeURIComponent(user)}/${encodeURIComponent(id)}`);
     }
   }
 
@@ -293,7 +297,7 @@ export class ApiTransport implements ILlngTransport {
   }
 
   async consentsGet(user: string): Promise<any[]> {
-    const result = await this.request("GET", `/api/v1/consents/${user}`);
+    const result = await this.request("GET", `/api/v1/consents/${encodeURIComponent(user)}`);
 
     // API may return object or array, normalize to array
     if (Array.isArray(result)) {
@@ -310,7 +314,7 @@ export class ApiTransport implements ILlngTransport {
 
   async consentsDelete(user: string, ids: string[]): Promise<void> {
     for (const id of ids) {
-      await this.request("DELETE", `/api/v1/consents/${user}/${id}`);
+      await this.request("DELETE", `/api/v1/consents/${encodeURIComponent(user)}/${encodeURIComponent(id)}`);
     }
   }
 }

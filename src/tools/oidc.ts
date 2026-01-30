@@ -3,11 +3,16 @@ import { z } from "zod";
 import { randomBytes, createHash } from "crypto";
 import { OidcConfig } from "../config.js";
 
-// Cache for OIDC discovery document
-let discoveryCache: { issuer: string; metadata: any } | null = null;
+// Cache for OIDC discovery document with TTL
+let discoveryCache: { issuer: string; metadata: any; fetchedAt: number } | null = null;
+const DISCOVERY_CACHE_TTL_MS = 3600_000; // 1 hour
 
 async function getDiscoveryMetadata(config: OidcConfig): Promise<any> {
-  if (discoveryCache && discoveryCache.issuer === config.issuer) {
+  if (
+    discoveryCache &&
+    discoveryCache.issuer === config.issuer &&
+    Date.now() - discoveryCache.fetchedAt < DISCOVERY_CACHE_TTL_MS
+  ) {
     return discoveryCache.metadata;
   }
 
@@ -21,7 +26,7 @@ async function getDiscoveryMetadata(config: OidcConfig): Promise<any> {
   }
 
   const metadata = await response.json();
-  discoveryCache = { issuer: config.issuer, metadata };
+  discoveryCache = { issuer: config.issuer, metadata, fetchedAt: Date.now() };
   return metadata;
 }
 
@@ -35,6 +40,32 @@ function generateCodeChallenge(verifier: string): string {
 
 function generateState(): string {
   return randomBytes(16).toString("base64url");
+}
+
+function isUrlSafe(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+      return false;
+    }
+    const hostname = parsed.hostname;
+    // Block private/link-local/loopback IPs
+    if (
+      hostname === "localhost" ||
+      hostname.startsWith("127.") ||
+      hostname === "[::1]" ||
+      hostname.startsWith("10.") ||
+      hostname.startsWith("192.168.") ||
+      hostname.startsWith("169.254.") ||
+      hostname.startsWith("0.") ||
+      /^172\.(1[6-9]|2\d|3[01])\./.test(hostname)
+    ) {
+      return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function base64UrlDecode(str: string): string {
@@ -275,7 +306,7 @@ export function registerOidcTools(server: McpServer, config: OidcConfig | undefi
 
   server.tool(
     "llng_oidc_whoami",
-    "Decode ID token to show identity",
+    "Decode ID token to show identity (WARNING: signature is NOT verified, for debugging only)",
     { id_token: z.string() },
     async (params) => {
       try {
@@ -289,7 +320,11 @@ export function registerOidcTools(server: McpServer, config: OidcConfig | undefi
         }
 
         const payload = JSON.parse(base64UrlDecode(parts[1]));
-        return { content: [{ type: "text", text: JSON.stringify(payload, null, 2) }] };
+        const result = {
+          _warning: "UNVERIFIED - JWT signature was NOT checked. Do not trust these claims for authorization decisions.",
+          ...payload,
+        };
+        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
       } catch (e: any) {
         return { content: [{ type: "text", text: `Error: ${e.message}` }], isError: true };
       }
@@ -298,12 +333,19 @@ export function registerOidcTools(server: McpServer, config: OidcConfig | undefi
 
   server.tool(
     "llng_oidc_check_auth",
-    "Check if a URL requires authentication",
-    { url: z.string(), access_token: z.string() },
+    "Check if a URL requires authentication (only public URLs allowed, private/internal IPs blocked)",
+    { url: z.string().url(), access_token: z.string() },
     async (params) => {
       try {
         if (!config) {
           return { content: [{ type: "text", text: "Error: OIDC not configured" }], isError: true };
+        }
+
+        if (!isUrlSafe(params.url)) {
+          return {
+            content: [{ type: "text", text: "Error: URL must be a public HTTP(S) URL. Private, loopback, and link-local addresses are blocked." }],
+            isError: true,
+          };
         }
 
         const response = await fetch(params.url, {

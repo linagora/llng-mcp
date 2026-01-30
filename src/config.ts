@@ -1,4 +1,4 @@
-import { readFileSync } from "fs";
+import { readFileSync, statSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
 
@@ -47,6 +47,18 @@ export function loadConfig(): LlngConfig {
   // Try to load config file from ~/.llng-mcp.json
   const configPath = join(homedir(), ".llng-mcp.json");
   try {
+    // Check file permissions - warn if too open
+    try {
+      const stats = statSync(configPath);
+      const mode = stats.mode & 0o777;
+      if (mode & 0o077) {
+        console.error(
+          `WARNING: ${configPath} has permissions ${mode.toString(8)}. It may contain credentials and should be restricted to owner only (chmod 600).`,
+        );
+      }
+    } catch {
+      // stat failed, file may not exist - continue
+    }
     const fileContent = readFileSync(configPath, "utf-8");
     const fileConfig = JSON.parse(fileContent);
 

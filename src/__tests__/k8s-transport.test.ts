@@ -321,10 +321,7 @@ describe("K8sTransport", () => {
 
   describe("execScript", () => {
     it("executes script with default binPrefix", async () => {
-      setupSpawnMock(
-        { stdout: "lemonldap-ng-abc123" },
-        { stdout: "Keys rotated successfully" },
-      );
+      setupSpawnMock({ stdout: "lemonldap-ng-abc123" }, { stdout: "Keys rotated successfully" });
 
       const transport = new K8sTransport(defaultConfig);
       const result = await transport.execScript("rotateOidcKeys", []);

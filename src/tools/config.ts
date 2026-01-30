@@ -15,7 +15,7 @@ export function registerConfigTools(server: McpServer, registry: TransportRegist
     },
     async (args) => {
       try {
-        const transport = registry.getTransport(args.instance);
+        const transport = registry.getTransport(args.instance, "manager");
         const result = await transport.configInfo();
         return {
           content: [
@@ -49,7 +49,7 @@ export function registerConfigTools(server: McpServer, registry: TransportRegist
     },
     async (args) => {
       try {
-        const transport = registry.getTransport(args.instance);
+        const transport = registry.getTransport(args.instance, "manager");
         const result = await transport.configGet(args.keys);
         return {
           content: [
@@ -84,7 +84,7 @@ export function registerConfigTools(server: McpServer, registry: TransportRegist
     },
     async (args) => {
       try {
-        const transport = registry.getTransport(args.instance);
+        const transport = registry.getTransport(args.instance, "manager");
         await transport.configSet(args.keys, args.log);
         return {
           content: [
@@ -120,7 +120,7 @@ export function registerConfigTools(server: McpServer, registry: TransportRegist
     },
     async (args) => {
       try {
-        const transport = registry.getTransport(args.instance);
+        const transport = registry.getTransport(args.instance, "manager");
         await transport.configAddKey(args.key, args.subkey, args.value);
         return {
           content: [
@@ -155,7 +155,7 @@ export function registerConfigTools(server: McpServer, registry: TransportRegist
     },
     async (args) => {
       try {
-        const transport = registry.getTransport(args.instance);
+        const transport = registry.getTransport(args.instance, "manager");
         await transport.configDelKey(args.key, args.subkey);
         return {
           content: [
@@ -188,7 +188,7 @@ export function registerConfigTools(server: McpServer, registry: TransportRegist
     },
     async (args) => {
       try {
-        const transport = registry.getTransport(args.instance);
+        const transport = registry.getTransport(args.instance, "manager");
         const result = await transport.configSave();
         return {
           content: [
@@ -222,7 +222,7 @@ export function registerConfigTools(server: McpServer, registry: TransportRegist
     },
     async (args) => {
       try {
-        const transport = registry.getTransport(args.instance);
+        const transport = registry.getTransport(args.instance, "manager");
         await transport.configRestore(args.json);
         return {
           content: [
@@ -256,7 +256,7 @@ export function registerConfigTools(server: McpServer, registry: TransportRegist
     },
     async (args) => {
       try {
-        const transport = registry.getTransport(args.instance);
+        const transport = registry.getTransport(args.instance, "manager");
         await transport.configMerge(args.json);
         return {
           content: [
@@ -289,7 +289,7 @@ export function registerConfigTools(server: McpServer, registry: TransportRegist
     },
     async (args) => {
       try {
-        const transport = registry.getTransport(args.instance);
+        const transport = registry.getTransport(args.instance, "manager");
         await transport.configRollback();
         return {
           content: [
@@ -322,13 +322,47 @@ export function registerConfigTools(server: McpServer, registry: TransportRegist
     },
     async (args) => {
       try {
-        const transport = registry.getTransport(args.instance);
+        const transport = registry.getTransport(args.instance, "manager");
         await transport.configUpdateCache();
         return {
           content: [
             {
               type: "text",
               text: "Config cache updated successfully",
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+          isError: true,
+        };
+      }
+    },
+  );
+
+  // 11. llng_config_test_email - Send a test email to verify SMTP settings
+  server.tool(
+    "llng_config_test_email",
+    "Send a test email to verify SMTP settings",
+    {
+      destination: z.string().describe("Email address to send the test email to"),
+      instance: z.string().optional().describe("LLNG instance name (uses default if omitted)"),
+    },
+    async (args) => {
+      try {
+        const transport = registry.getTransport(args.instance, "manager");
+        await transport.configTestEmail(args.destination);
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Test email sent successfully to ${args.destination}`,
             },
           ],
         };

@@ -49,12 +49,20 @@ export interface K8sConfig {
   binPrefix?: string;
 }
 
+export interface ManagerOverride {
+  mode?: LlngMode;
+  ssh?: Partial<SshConfig>;
+  api?: ApiConfig;
+  k8s?: K8sConfig;
+}
+
 export interface LlngConfig {
   mode: LlngMode;
   ssh?: SshConfig;
   api?: ApiConfig;
   k8s?: K8sConfig;
   oidc?: OidcConfig;
+  manager?: ManagerOverride;
 }
 
 export interface ResolvedPaths {
@@ -230,6 +238,105 @@ export function loadConfig(): LlngConfig {
     config.oidc.scope = process.env.LLNG_OIDC_SCOPE;
   }
 
+  // Manager override config
+  const ensureManager = () => {
+    if (!config.manager) {
+      config.manager = {};
+    }
+    return config.manager;
+  };
+
+  const ensureManagerSsh = () => {
+    const manager = ensureManager();
+    if (!manager.ssh) {
+      manager.ssh = {};
+    }
+    return manager.ssh;
+  };
+
+  const ensureManagerApi = () => {
+    const manager = ensureManager();
+    if (!manager.api) {
+      manager.api = { baseUrl: "" };
+    }
+    return manager.api;
+  };
+
+  const ensureManagerK8s = () => {
+    const manager = ensureManager();
+    if (!manager.k8s) {
+      manager.k8s = {};
+    }
+    return manager.k8s;
+  };
+
+  if (process.env.LLNG_MANAGER_MODE) {
+    ensureManager().mode = parseMode(process.env.LLNG_MANAGER_MODE);
+  }
+
+  if (process.env.LLNG_MANAGER_SSH_HOST) {
+    ensureManagerSsh().host = process.env.LLNG_MANAGER_SSH_HOST;
+  }
+  if (process.env.LLNG_MANAGER_SSH_USER) {
+    ensureManagerSsh().user = process.env.LLNG_MANAGER_SSH_USER;
+  }
+  if (process.env.LLNG_MANAGER_SSH_PORT) {
+    ensureManagerSsh().port = parseInt(process.env.LLNG_MANAGER_SSH_PORT, 10);
+  }
+  if (process.env.LLNG_MANAGER_SSH_SUDO) {
+    ensureManagerSsh().sudo = process.env.LLNG_MANAGER_SSH_SUDO;
+  }
+  if (process.env.LLNG_MANAGER_SSH_REMOTE_COMMAND) {
+    ensureManagerSsh().remoteCommand = process.env.LLNG_MANAGER_SSH_REMOTE_COMMAND;
+  }
+  if (process.env.LLNG_MANAGER_SSH_BIN_PREFIX) {
+    ensureManagerSsh().binPrefix = process.env.LLNG_MANAGER_SSH_BIN_PREFIX;
+  }
+  if (process.env.LLNG_MANAGER_SSH_CLI_PATH) {
+    ensureManagerSsh().cliPath = process.env.LLNG_MANAGER_SSH_CLI_PATH;
+  }
+  if (process.env.LLNG_MANAGER_SSH_SESSIONS_PATH) {
+    ensureManagerSsh().sessionsPath = process.env.LLNG_MANAGER_SSH_SESSIONS_PATH;
+  }
+  if (process.env.LLNG_MANAGER_SSH_CONFIG_EDITOR_PATH) {
+    ensureManagerSsh().configEditorPath = process.env.LLNG_MANAGER_SSH_CONFIG_EDITOR_PATH;
+  }
+  if (process.env.LLNG_MANAGER_SSH_DELETE_SESSION_PATH) {
+    ensureManagerSsh().deleteSessionPath = process.env.LLNG_MANAGER_SSH_DELETE_SESSION_PATH;
+  }
+
+  if (process.env.LLNG_MANAGER_API_URL) {
+    ensureManagerApi().baseUrl = process.env.LLNG_MANAGER_API_URL;
+  }
+  if (process.env.LLNG_MANAGER_API_BASIC_USER || process.env.LLNG_MANAGER_API_BASIC_PASSWORD) {
+    ensureManagerApi().basicAuth = {
+      username: process.env.LLNG_MANAGER_API_BASIC_USER || "",
+      password: process.env.LLNG_MANAGER_API_BASIC_PASSWORD || "",
+    };
+  }
+  if (process.env.LLNG_MANAGER_API_VERIFY_SSL) {
+    ensureManagerApi().verifySsl = process.env.LLNG_MANAGER_API_VERIFY_SSL !== "false";
+  }
+
+  if (process.env.LLNG_MANAGER_K8S_CONTEXT) {
+    ensureManagerK8s().context = process.env.LLNG_MANAGER_K8S_CONTEXT;
+  }
+  if (process.env.LLNG_MANAGER_K8S_NAMESPACE) {
+    ensureManagerK8s().namespace = process.env.LLNG_MANAGER_K8S_NAMESPACE;
+  }
+  if (process.env.LLNG_MANAGER_K8S_DEPLOYMENT) {
+    ensureManagerK8s().deployment = process.env.LLNG_MANAGER_K8S_DEPLOYMENT;
+  }
+  if (process.env.LLNG_MANAGER_K8S_CONTAINER) {
+    ensureManagerK8s().container = process.env.LLNG_MANAGER_K8S_CONTAINER;
+  }
+  if (process.env.LLNG_MANAGER_K8S_POD_SELECTOR) {
+    ensureManagerK8s().podSelector = process.env.LLNG_MANAGER_K8S_POD_SELECTOR;
+  }
+  if (process.env.LLNG_MANAGER_K8S_BIN_PREFIX) {
+    ensureManagerK8s().binPrefix = process.env.LLNG_MANAGER_K8S_BIN_PREFIX;
+  }
+
   return config;
 }
 
@@ -249,6 +356,7 @@ function applyInstanceDefaults(partial: Partial<LlngConfig>): LlngConfig {
   if (partial.api) config.api = partial.api;
   if (partial.k8s) config.k8s = partial.k8s;
   if (partial.oidc) config.oidc = partial.oidc;
+  if (partial.manager) config.manager = partial.manager;
 
   // For ssh mode without explicit ssh config, provide empty object
   if (config.mode === "ssh" && !config.ssh) {
@@ -340,6 +448,105 @@ function applyEnvOverrides(config: LlngConfig): void {
   if (process.env.LLNG_OIDC_SCOPE) {
     config.oidc = config.oidc || { issuer: "", clientId: "", redirectUri: "", scope: "" };
     config.oidc.scope = process.env.LLNG_OIDC_SCOPE;
+  }
+
+  // Manager override env overrides
+  const ensureManager = () => {
+    if (!config.manager) {
+      config.manager = {};
+    }
+    return config.manager;
+  };
+
+  const ensureManagerSsh = () => {
+    const manager = ensureManager();
+    if (!manager.ssh) {
+      manager.ssh = {};
+    }
+    return manager.ssh;
+  };
+
+  const ensureManagerApi = () => {
+    const manager = ensureManager();
+    if (!manager.api) {
+      manager.api = { baseUrl: "" };
+    }
+    return manager.api;
+  };
+
+  const ensureManagerK8s = () => {
+    const manager = ensureManager();
+    if (!manager.k8s) {
+      manager.k8s = {};
+    }
+    return manager.k8s;
+  };
+
+  if (process.env.LLNG_MANAGER_MODE) {
+    ensureManager().mode = parseMode(process.env.LLNG_MANAGER_MODE);
+  }
+
+  if (process.env.LLNG_MANAGER_SSH_HOST) {
+    ensureManagerSsh().host = process.env.LLNG_MANAGER_SSH_HOST;
+  }
+  if (process.env.LLNG_MANAGER_SSH_USER) {
+    ensureManagerSsh().user = process.env.LLNG_MANAGER_SSH_USER;
+  }
+  if (process.env.LLNG_MANAGER_SSH_PORT) {
+    ensureManagerSsh().port = parseInt(process.env.LLNG_MANAGER_SSH_PORT, 10);
+  }
+  if (process.env.LLNG_MANAGER_SSH_SUDO) {
+    ensureManagerSsh().sudo = process.env.LLNG_MANAGER_SSH_SUDO;
+  }
+  if (process.env.LLNG_MANAGER_SSH_REMOTE_COMMAND) {
+    ensureManagerSsh().remoteCommand = process.env.LLNG_MANAGER_SSH_REMOTE_COMMAND;
+  }
+  if (process.env.LLNG_MANAGER_SSH_BIN_PREFIX) {
+    ensureManagerSsh().binPrefix = process.env.LLNG_MANAGER_SSH_BIN_PREFIX;
+  }
+  if (process.env.LLNG_MANAGER_SSH_CLI_PATH) {
+    ensureManagerSsh().cliPath = process.env.LLNG_MANAGER_SSH_CLI_PATH;
+  }
+  if (process.env.LLNG_MANAGER_SSH_SESSIONS_PATH) {
+    ensureManagerSsh().sessionsPath = process.env.LLNG_MANAGER_SSH_SESSIONS_PATH;
+  }
+  if (process.env.LLNG_MANAGER_SSH_CONFIG_EDITOR_PATH) {
+    ensureManagerSsh().configEditorPath = process.env.LLNG_MANAGER_SSH_CONFIG_EDITOR_PATH;
+  }
+  if (process.env.LLNG_MANAGER_SSH_DELETE_SESSION_PATH) {
+    ensureManagerSsh().deleteSessionPath = process.env.LLNG_MANAGER_SSH_DELETE_SESSION_PATH;
+  }
+
+  if (process.env.LLNG_MANAGER_API_URL) {
+    ensureManagerApi().baseUrl = process.env.LLNG_MANAGER_API_URL;
+  }
+  if (process.env.LLNG_MANAGER_API_BASIC_USER || process.env.LLNG_MANAGER_API_BASIC_PASSWORD) {
+    ensureManagerApi().basicAuth = {
+      username: process.env.LLNG_MANAGER_API_BASIC_USER || "",
+      password: process.env.LLNG_MANAGER_API_BASIC_PASSWORD || "",
+    };
+  }
+  if (process.env.LLNG_MANAGER_API_VERIFY_SSL) {
+    ensureManagerApi().verifySsl = process.env.LLNG_MANAGER_API_VERIFY_SSL !== "false";
+  }
+
+  if (process.env.LLNG_MANAGER_K8S_CONTEXT) {
+    ensureManagerK8s().context = process.env.LLNG_MANAGER_K8S_CONTEXT;
+  }
+  if (process.env.LLNG_MANAGER_K8S_NAMESPACE) {
+    ensureManagerK8s().namespace = process.env.LLNG_MANAGER_K8S_NAMESPACE;
+  }
+  if (process.env.LLNG_MANAGER_K8S_DEPLOYMENT) {
+    ensureManagerK8s().deployment = process.env.LLNG_MANAGER_K8S_DEPLOYMENT;
+  }
+  if (process.env.LLNG_MANAGER_K8S_CONTAINER) {
+    ensureManagerK8s().container = process.env.LLNG_MANAGER_K8S_CONTAINER;
+  }
+  if (process.env.LLNG_MANAGER_K8S_POD_SELECTOR) {
+    ensureManagerK8s().podSelector = process.env.LLNG_MANAGER_K8S_POD_SELECTOR;
+  }
+  if (process.env.LLNG_MANAGER_K8S_BIN_PREFIX) {
+    ensureManagerK8s().binPrefix = process.env.LLNG_MANAGER_K8S_BIN_PREFIX;
   }
 }
 

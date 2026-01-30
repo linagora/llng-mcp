@@ -1,4 +1,4 @@
-import { ILlngTransport, ConfigInfo, SessionFilter } from "./interface.js";
+import { ILlngTransport, ConfigInfo, SessionFilter, SessionGetOptions, SessionDeleteOptions } from "./interface.js";
 import { ApiConfig } from "../config.js";
 import https from "https";
 
@@ -204,8 +204,19 @@ export class ApiTransport implements ILlngTransport {
     // No-op for API mode - cache is managed server-side
   }
 
-  async sessionGet(id: string, backend?: string): Promise<Record<string, any>> {
-    const backendName = backend || "global";
+  async configTestEmail(_destination: string): Promise<void> {
+    throw new Error("configTestEmail is not supported via API. Use SSH or K8s mode.");
+  }
+
+  private resolveBackend(options?: SessionGetOptions): string {
+    if (options?.persistent) return "persistent";
+    if (options?.refreshTokens) return "oidc";
+    return options?.backend || "global";
+  }
+
+  async sessionGet(id: string, options?: SessionGetOptions): Promise<Record<string, any>> {
+    const backendName = this.resolveBackend(options);
+    // hash option is not supported via API
     return await this.request(
       "GET",
       `/api/v1/sessions/${encodeURIComponent(backendName)}/${encodeURIComponent(id)}`,
@@ -213,19 +224,32 @@ export class ApiTransport implements ILlngTransport {
   }
 
   async sessionSearch(filters: SessionFilter): Promise<any[]> {
-    const backend = filters.backend || "global";
+    let backend = filters.backend || "global";
+    if (filters.persistent) {
+      backend = "persistent";
+    }
     const queryParams: string[] = [];
 
-    // Build where clause
-    if (filters.where) {
+    // Handle refreshTokens: use backend="oidc" and add _type filter
+    if (filters.refreshTokens) {
+      backend = "oidc";
+      const whereClause = filters.where ? { ...filters.where, _type: "refresh_token" } : { _type: "refresh_token" };
+      const whereClauses = Object.entries(whereClause).map(
+        ([field, value]) => `${field}=${value}`,
+      );
+      queryParams.push(`where=${encodeURIComponent(whereClauses.join(" AND "))}`);
+    } else if (filters.where) {
+      // Build where clause
       const whereClauses = Object.entries(filters.where).map(
         ([field, value]) => `${field}=${value}`,
       );
       queryParams.push(`where=${encodeURIComponent(whereClauses.join(" AND "))}`);
     }
 
-    // Build select clause
-    if (filters.select && filters.select.length > 0) {
+    // Handle idOnly: select only _session_id
+    if (filters.idOnly) {
+      queryParams.push("select=_session_id");
+    } else if (filters.select && filters.select.length > 0) {
       queryParams.push(`select=${filters.select.join(",")}`);
     }
 
@@ -242,6 +266,9 @@ export class ApiTransport implements ILlngTransport {
 
     // API returns an object with session IDs as keys, convert to array
     if (typeof result === "object" && !Array.isArray(result)) {
+      if (filters.idOnly) {
+        return Object.keys(result);
+      }
       return Object.entries(result).map(([id, data]) => ({
         id,
         ...(data as object),
@@ -251,35 +278,63 @@ export class ApiTransport implements ILlngTransport {
     return result;
   }
 
-  async sessionDelete(ids: string[], backend?: string): Promise<void> {
-    const backendName = backend || "global";
+  async sessionDelete(ids: string[], options?: SessionDeleteOptions): Promise<void> {
+    const backendName = this.resolveBackend(options);
 
-    for (const id of ids) {
-      await this.request(
-        "DELETE",
-        `/api/v1/sessions/${encodeURIComponent(backendName)}/${encodeURIComponent(id)}`,
-      );
+    if (options?.where) {
+      // Where-based deletion: search first, then delete matching
+      const searchFilters: SessionFilter = {
+        where: options.where,
+        backend: backendName,
+        idOnly: true,
+      };
+      const matchingIds = await this.sessionSearch(searchFilters);
+      for (const id of matchingIds) {
+        const sessionId = typeof id === "string" ? id : id.id || id._session_id;
+        if (sessionId) {
+          await this.request(
+            "DELETE",
+            `/api/v1/sessions/${encodeURIComponent(backendName)}/${encodeURIComponent(sessionId)}`,
+          );
+        }
+      }
+    } else {
+      for (const id of ids) {
+        await this.request(
+          "DELETE",
+          `/api/v1/sessions/${encodeURIComponent(backendName)}/${encodeURIComponent(id)}`,
+        );
+      }
     }
   }
 
-  async sessionSetKey(id: string, pairs: Record<string, any>): Promise<void> {
-    await this.request("PUT", `/api/v1/sessions/global/${encodeURIComponent(id)}`, pairs);
+  async sessionSetKey(id: string, pairs: Record<string, any>, options?: SessionGetOptions): Promise<void> {
+    const backendName = this.resolveBackend(options);
+    await this.request("PUT", `/api/v1/sessions/${encodeURIComponent(backendName)}/${encodeURIComponent(id)}`, pairs);
   }
 
-  async sessionDelKey(id: string, keys: string[]): Promise<void> {
+  async sessionDelKey(id: string, keys: string[], options?: SessionGetOptions): Promise<void> {
+    const backendName = this.resolveBackend(options);
     const pairs: Record<string, null> = {};
     for (const key of keys) {
       pairs[key] = null;
     }
-    await this.request("PUT", `/api/v1/sessions/global/${encodeURIComponent(id)}`, pairs);
+    await this.request("PUT", `/api/v1/sessions/${encodeURIComponent(backendName)}/${encodeURIComponent(id)}`, pairs);
   }
 
-  async sessionBackup(backend?: string): Promise<string> {
-    const backendName = backend || "global";
-    const sessions = await this.request(
-      "GET",
-      `/api/v1/sessions/${encodeURIComponent(backendName)}`,
-    );
+  async sessionBackup(backend?: string, refreshTokens?: boolean, persistent?: boolean): Promise<string> {
+    let backendName = backend || "global";
+    if (persistent) {
+      backendName = "persistent";
+    }
+    let path = `/api/v1/sessions/${encodeURIComponent(backendName)}`;
+
+    if (refreshTokens) {
+      backendName = "oidc";
+      path = `/api/v1/sessions/${encodeURIComponent(backendName)}?where=${encodeURIComponent("_type=refresh_token")}`;
+    }
+
+    const sessions = await this.request("GET", path);
     return JSON.stringify(sessions, null, 2);
   }
 

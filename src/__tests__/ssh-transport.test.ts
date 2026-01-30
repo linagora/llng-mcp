@@ -167,13 +167,35 @@ Log      : Test config`;
       setupSpawnMock("");
 
       const transport = new SshTransport(defaultConfig);
-      await transport.sessionDelete(["id1", "id2"], "persistent");
+      await transport.sessionDelete(["id1", "id2"], { backend: "persistent" });
 
       expect(spawnCalls).toHaveLength(2);
       expect(spawnCalls[0].cmd).toBe("/usr/share/lemonldap-ng/bin/llngDeleteSession");
       expect(spawnCalls[0].args).toEqual(["id1", "--backend", "persistent"]);
       expect(spawnCalls[1].cmd).toBe("/usr/share/lemonldap-ng/bin/llngDeleteSession");
       expect(spawnCalls[1].args).toEqual(["id2", "--backend", "persistent"]);
+    });
+
+    it("sessionDelete with where filter uses lemonldap-ng-sessions delete", async () => {
+      setupSpawnMock("");
+
+      const transport = new SshTransport(defaultConfig);
+      await transport.sessionDelete([], { where: { uid: "john" } });
+
+      expect(spawnCalls).toHaveLength(1);
+      expect(spawnCalls[0].cmd).toBe("/usr/share/lemonldap-ng/bin/lemonldap-ng-sessions");
+      expect(spawnCalls[0].args).toEqual(["delete", "--where", "uid=john"]);
+    });
+
+    it("configTestEmail calls test-email via CLI", async () => {
+      setupSpawnMock("");
+
+      const transport = new SshTransport(defaultConfig);
+      await transport.configTestEmail("test@example.com");
+
+      expect(spawnCalls).toHaveLength(1);
+      expect(spawnCalls[0].cmd).toBe("/usr/share/lemonldap-ng/bin/lemonldap-ng-cli");
+      expect(spawnCalls[0].args).toEqual(["test-email", "test@example.com"]);
     });
 
     it("secondFactorsGet throws not supported error", async () => {
@@ -382,27 +404,73 @@ Log      : Test config`;
       setupSpawnMock('{"uid": "john", "ipAddr": "192.168.1.1"}');
 
       const transport = new SshTransport(defaultConfig);
-      const result = await transport.sessionGet("sessionid123", "persistent");
+      const result = await transport.sessionGet("sessionid123", { backend: "persistent" });
 
       expect(spawnCalls).toHaveLength(1);
       expect(spawnCalls[0].args).toEqual(["get", "sessionid123", "--backend", "persistent"]);
       expect(result).toEqual({ uid: "john", ipAddr: "192.168.1.1" });
     });
 
-    it("sessionSetKey throws not supported error", async () => {
-      const transport = new SshTransport(defaultConfig);
+    it("sessionGet with persistent flag", async () => {
+      setupSpawnMock('{"uid": "john"}');
 
-      await expect(transport.sessionSetKey("sessionid123", { uid: "jane" })).rejects.toThrow(
-        "sessionSetKey is not supported via CLI. Use API mode.",
-      );
+      const transport = new SshTransport(defaultConfig);
+      await transport.sessionGet("sessionid123", { persistent: true });
+
+      expect(spawnCalls).toHaveLength(1);
+      expect(spawnCalls[0].args).toEqual(["get", "sessionid123", "--persistent"]);
     });
 
-    it("sessionDelKey throws not supported error", async () => {
-      const transport = new SshTransport(defaultConfig);
+    it("sessionGet with hash flag", async () => {
+      setupSpawnMock('{"uid": "john"}');
 
-      await expect(transport.sessionDelKey("sessionid123", ["key1"])).rejects.toThrow(
-        "sessionDelKey is not supported via CLI. Use API mode.",
-      );
+      const transport = new SshTransport(defaultConfig);
+      await transport.sessionGet("sessionid123", { hash: true });
+
+      expect(spawnCalls).toHaveLength(1);
+      expect(spawnCalls[0].args).toEqual(["get", "sessionid123", "--hash"]);
+    });
+
+    it("sessionSetKey uses execSessions with setKey command", async () => {
+      setupSpawnMock("");
+
+      const transport = new SshTransport(defaultConfig);
+      await transport.sessionSetKey("sessionid123", { uid: "jane", mail: "jane@example.com" });
+
+      expect(spawnCalls).toHaveLength(1);
+      expect(spawnCalls[0].cmd).toBe("/usr/share/lemonldap-ng/bin/lemonldap-ng-sessions");
+      expect(spawnCalls[0].args).toEqual(["setKey", "sessionid123", "uid", "jane", "mail", "jane@example.com"]);
+    });
+
+    it("sessionSetKey with persistent option", async () => {
+      setupSpawnMock("");
+
+      const transport = new SshTransport(defaultConfig);
+      await transport.sessionSetKey("sessionid123", { uid: "jane" }, { persistent: true });
+
+      expect(spawnCalls).toHaveLength(1);
+      expect(spawnCalls[0].args).toEqual(["setKey", "sessionid123", "uid", "jane", "--persistent"]);
+    });
+
+    it("sessionDelKey uses execSessions with delKey command", async () => {
+      setupSpawnMock("");
+
+      const transport = new SshTransport(defaultConfig);
+      await transport.sessionDelKey("sessionid123", ["key1", "key2"]);
+
+      expect(spawnCalls).toHaveLength(1);
+      expect(spawnCalls[0].cmd).toBe("/usr/share/lemonldap-ng/bin/lemonldap-ng-sessions");
+      expect(spawnCalls[0].args).toEqual(["delKey", "sessionid123", "key1", "key2"]);
+    });
+
+    it("sessionDelKey with backend option", async () => {
+      setupSpawnMock("");
+
+      const transport = new SshTransport(defaultConfig);
+      await transport.sessionDelKey("sessionid123", ["key1"], { backend: "persistent" });
+
+      expect(spawnCalls).toHaveLength(1);
+      expect(spawnCalls[0].args).toEqual(["delKey", "sessionid123", "key1", "--backend", "persistent"]);
     });
 
     it("sessionBackup returns all sessions via search", async () => {
@@ -412,7 +480,7 @@ Log      : Test config`;
       const result = await transport.sessionBackup("persistent");
 
       expect(spawnCalls).toHaveLength(1);
-      expect(spawnCalls[0].args).toEqual(["search"]);
+      expect(spawnCalls[0].args).toEqual(["search", "--backend", "persistent"]);
       expect(result).toBe("[]");
     });
 

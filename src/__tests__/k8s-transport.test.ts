@@ -259,10 +259,34 @@ describe("K8sTransport", () => {
 
     it("unsupported methods throw", async () => {
       const transport = new K8sTransport(defaultConfig);
-      await expect(transport.sessionSetKey("id", {})).rejects.toThrow("Use API mode");
-      await expect(transport.sessionDelKey("id", [])).rejects.toThrow("Use API mode");
       await expect(transport.secondFactorsGet("user")).rejects.toThrow("Use API mode");
       await expect(transport.consentsGet("user")).rejects.toThrow("Use API mode");
+    });
+
+    it("sessionSetKey uses execSessions with setKey command", async () => {
+      setupSpawnMock(
+        { stdout: "llng-pod-123" },
+        { stdout: "" },
+      );
+
+      const transport = new K8sTransport(defaultConfig);
+      await transport.sessionSetKey("sid1", { uid: "jane" });
+
+      const execCall = spawnCalls[1];
+      expect(execCall.args).toContain("setKey");
+    });
+
+    it("sessionDelKey uses execSessions with delKey command", async () => {
+      setupSpawnMock(
+        { stdout: "llng-pod-123" },
+        { stdout: "" },
+      );
+
+      const transport = new K8sTransport(defaultConfig);
+      await transport.sessionDelKey("sid1", ["key1"]);
+
+      const execCall = spawnCalls[1];
+      expect(execCall.args).toContain("delKey");
     });
   });
 

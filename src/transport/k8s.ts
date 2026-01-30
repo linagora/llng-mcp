@@ -1,6 +1,6 @@
 import { spawn } from "child_process";
 import { K8sConfig, resolvePaths } from "../config.js";
-import { ILlngTransport, SessionFilter, ConfigInfo } from "./interface.js";
+import { ILlngTransport, SessionFilter, ConfigInfo, SessionGetOptions, SessionDeleteOptions } from "./interface.js";
 
 export class K8sTransport implements ILlngTransport {
   private paths: { cliPath: string; sessionsPath: string; configEditorPath: string };
@@ -151,6 +151,22 @@ export class K8sTransport implements ILlngTransport {
     return this.exec([this.paths.sessionsPath, ...subArgs]);
   }
 
+  private pushSessionGetOptions(args: string[], options?: SessionGetOptions): void {
+    if (!options) return;
+    if (options.persistent) {
+      args.push("--persistent");
+    }
+    if (options.hash) {
+      args.push("--hash");
+    }
+    if (options.refreshTokens) {
+      args.push("--refresh-tokens");
+    }
+    if (options.backend) {
+      args.push("--backend", options.backend);
+    }
+  }
+
   // Config methods
   async configInfo(): Promise<ConfigInfo> {
     const output = await this.execCli(["info"]);
@@ -222,12 +238,14 @@ export class K8sTransport implements ILlngTransport {
     await this.execCli(["update-cache"]);
   }
 
+  async configTestEmail(destination: string): Promise<void> {
+    await this.execCli(["test-email", destination]);
+  }
+
   // Session methods
-  async sessionGet(id: string, backend?: string): Promise<Record<string, any>> {
+  async sessionGet(id: string, options?: SessionGetOptions): Promise<Record<string, any>> {
     const args = ["get", id];
-    if (backend) {
-      args.push("--backend", backend);
-    }
+    this.pushSessionGetOptions(args, options);
     const output = await this.execSessions(args);
     return JSON.parse(output);
   }
@@ -248,31 +266,69 @@ export class K8sTransport implements ILlngTransport {
     if (filters.count) {
       args.push("--count");
     }
+    if (filters.refreshTokens) {
+      args.push("--refresh-tokens");
+    }
+    if (filters.persistent) {
+      args.push("--persistent");
+    }
+    if (filters.hash) {
+      args.push("--hash");
+    }
+    if (filters.idOnly) {
+      args.push("--id-only");
+    }
     const output = await this.execSessions(args);
     return JSON.parse(output);
   }
 
-  async sessionDelete(ids: string[], backend?: string): Promise<void> {
-    const deleteScriptPath = this.paths.cliPath.replace("lemonldap-ng-cli", "llngDeleteSession");
-    for (const id of ids) {
-      const args = [deleteScriptPath, id];
-      if (backend) {
-        args.push("--backend", backend);
+  async sessionDelete(ids: string[], options?: SessionDeleteOptions): Promise<void> {
+    if (options?.where) {
+      // Where-based deletion uses lemonldap-ng-sessions delete
+      const args: string[] = ["delete"];
+      for (const [field, value] of Object.entries(options.where)) {
+        args.push("--where", `${field}=${value}`);
       }
-      await this.exec(args);
+      this.pushSessionGetOptions(args, options);
+      await this.execSessions(args);
+    } else {
+      // ID-based deletion uses llngDeleteSession
+      const deleteScriptPath = this.paths.cliPath.replace("lemonldap-ng-cli", "llngDeleteSession");
+      for (const id of ids) {
+        const args = [deleteScriptPath, id];
+        this.pushSessionGetOptions(args, options);
+        await this.exec(args);
+      }
     }
   }
 
-  async sessionSetKey(_id: string, _pairs: Record<string, any>): Promise<void> {
-    throw new Error("sessionSetKey is not supported via CLI. Use API mode.");
+  async sessionSetKey(id: string, pairs: Record<string, any>, options?: SessionGetOptions): Promise<void> {
+    const args: string[] = ["setKey", id];
+    for (const [key, value] of Object.entries(pairs)) {
+      args.push(key, String(value));
+    }
+    this.pushSessionGetOptions(args, options);
+    await this.execSessions(args);
   }
 
-  async sessionDelKey(_id: string, _keys: string[]): Promise<void> {
-    throw new Error("sessionDelKey is not supported via CLI. Use API mode.");
+  async sessionDelKey(id: string, keys: string[], options?: SessionGetOptions): Promise<void> {
+    const args: string[] = ["delKey", id, ...keys];
+    this.pushSessionGetOptions(args, options);
+    await this.execSessions(args);
   }
 
-  async sessionBackup(_backend?: string): Promise<string> {
-    const output = await this.execSessions(["search"]);
+  async sessionBackup(backend?: string, refreshTokens?: boolean, persistent?: boolean): Promise<string> {
+    const args = ["search"];
+    if (backend) {
+      args.push("--backend", backend);
+    }
+    if (refreshTokens) {
+      args.push("--refresh-tokens");
+    }
+    if (persistent) {
+      args.push("--persistent");
+    }
+    const output = await this.execSessions(args);
     return output;
   }
 

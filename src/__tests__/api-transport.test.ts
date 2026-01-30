@@ -540,7 +540,7 @@ describe("ApiTransport", () => {
       const mockFetch = vi.fn().mockResolvedValue(mockFetchResponse(sessionData));
       global.fetch = mockFetch as any;
 
-      await transport.sessionGet("xyz789", "oidc");
+      await transport.sessionGet("xyz789", { backend: "oidc" });
 
       expect(mockFetch).toHaveBeenCalledWith(
         "https://auth.example.com/api/v1/sessions/oidc/xyz789",
@@ -646,7 +646,7 @@ describe("ApiTransport", () => {
       const mockFetch = vi.fn().mockResolvedValue(mockFetchResponse({ success: true }));
       global.fetch = mockFetch as any;
 
-      await transport.sessionDelete(["session1"], "oidc");
+      await transport.sessionDelete(["session1"], { backend: "oidc" });
 
       expect(mockFetch.mock.calls[0][0]).toBe(
         "https://auth.example.com/api/v1/sessions/oidc/session1",

@@ -6,11 +6,11 @@ A Model Context Protocol (MCP) server that enables AI assistants to manage and m
 
 ## Overview
 
-llng-mcp bridges AI assistants with Lemonldap-NG, a powerful web SSO (Single Sign-On) system. Through 30 tools and 1 resource, it provides AI-native access to configuration management, session control, multi-factor authentication, OIDC testing, and user consent tracking.
+llng-mcp bridges AI assistants with Lemonldap-NG, a powerful web SSO (Single Sign-On) system. Through 31 tools and 1 resource, it provides AI-native access to configuration management, session control, multi-factor authentication, OIDC testing, and user consent tracking.
 
 ## Features
 
-### Configuration Tools (10 tools)
+### Configuration Tools (11 tools)
 
 - **llng_config_info** - Retrieve current configuration metadata (number, author, date, log)
 - **llng_config_get** - Fetch configuration values by key
@@ -22,15 +22,16 @@ llng-mcp bridges AI assistants with Lemonldap-NG, a powerful web SSO (Single Sig
 - **llng_config_merge** - Merge JSON snippet into current configuration
 - **llng_config_rollback** - Revert to previous configuration version
 - **llng_config_update_cache** - Force cache refresh on LLNG nodes
+- **llng_config_test_email** - Send a test email to verify SMTP settings
 
 ### Session Management Tools (6 tools)
 
-- **llng_session_get** - Retrieve session data by ID
-- **llng_session_search** - Search sessions with filters (user, IP, backend type)
-- **llng_session_delete** - Terminate user sessions
-- **llng_session_setKey** - Modify session attributes
-- **llng_session_delKey** - Remove session attributes
-- **llng_session_backup** - Export all sessions as JSON backup
+- **llng_session_get** - Retrieve session data by ID (supports `backend`, `persistent`, `hash`, `refreshTokens` options)
+- **llng_session_search** - Search sessions with filters (supports `where`, `select`, `backend`, `count`, `kind`, `persistent`, `hash`, `idOnly`, `refreshTokens`)
+- **llng_session_delete** - Terminate user sessions (supports `where` filter for bulk deletion, `kind`, `backend`, `persistent`, `hash`, `refreshTokens`)
+- **llng_session_setKey** - Modify session attributes (supports `backend`, `persistent`, `hash`, `refreshTokens` options)
+- **llng_session_delKey** - Remove session attributes (supports `backend`, `persistent`, `hash`, `refreshTokens` options)
+- **llng_session_backup** - Export all sessions as JSON backup (supports `backend`, `persistent`, `refreshTokens` options)
 
 ### Two-Factor Authentication Tools (3 tools)
 
@@ -125,8 +126,6 @@ This produces: `ssh server.example.com docker exec sso-auth-1 /usr/share/lemonld
 The `binPrefix` field (default: `/usr/share/lemonldap-ng/bin`) sets the base directory for all LLNG CLI tools. Individual paths (`cliPath`, `sessionsPath`, `configEditorPath`) can still override specific binaries.
 
 **SSH Mode Limitations**: The following operations require API mode:
-- `llng_session_setKey` - Modify session attributes
-- `llng_session_delKey` - Remove session attributes
 - `llng_2fa_list` - List 2FA devices
 - `llng_2fa_delete` - Remove 2FA devices
 - `llng_2fa_delType` - Remove all devices of type
@@ -345,17 +344,18 @@ Configure your MCP client to connect to the stdio server. For example, with `cli
 | llng_config_merge | Merge JSON | json (string) | Both |
 | llng_config_rollback | Revert previous | None | Both |
 | llng_config_update_cache | Force cache refresh | None | Both |
+| llng_config_test_email | Send test email | destination (string) | Both |
 
 ### Session Management
 
 | Tool | Description | Parameters | Mode |
 |------|-------------|------------|------|
-| llng_session_get | Get session | id, backend (optional) | Both |
-| llng_session_search | Search sessions | where, select, backend, count | Both |
-| llng_session_delete | Delete sessions | ids, backend (optional) | Both |
-| llng_session_setKey | Modify session | id, keys (object) | API Only |
-| llng_session_delKey | Remove attributes | id, keys (string[]) | API Only |
-| llng_session_backup | Export sessions | backend (optional) | Both |
+| llng_session_get | Get session | id, backend, persistent, hash, refreshTokens | Both |
+| llng_session_search | Search sessions | where, select, backend, count, kind, persistent, hash, idOnly, refreshTokens | Both |
+| llng_session_delete | Delete sessions | ids (optional), where, kind, backend, persistent, hash, refreshTokens | Both |
+| llng_session_setKey | Modify session | id, keys, backend, persistent, hash, refreshTokens | Both |
+| llng_session_delKey | Remove attributes | id, keys, backend, persistent, hash, refreshTokens | Both |
+| llng_session_backup | Export sessions | backend, persistent, refreshTokens | Both |
 
 ### Two-Factor Authentication
 
@@ -437,7 +437,7 @@ A `TransportRegistry` manages transport instances per named configuration, enabl
 
 ### SSH Mode
 
-Session modification, 2FA management, and user consent operations require the REST API. The CLI tools (`lemonldap-ng-cli` and `lemonldap-ng-sessions`) provide read-only or delete-only capabilities for these features.
+2FA management and user consent operations require the REST API. The CLI tools (`lemonldap-ng-cli` and `lemonldap-ng-sessions`) provide read-only or delete-only capabilities for these features.
 
 ### API Mode
 

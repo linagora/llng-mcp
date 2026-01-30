@@ -43,6 +43,7 @@ describe("Tool Registration", () => {
       secondFactorsDelType: vi.fn().mockResolvedValue(undefined),
       consentsGet: vi.fn().mockResolvedValue([]),
       consentsDelete: vi.fn().mockResolvedValue(undefined),
+      configTestEmail: vi.fn().mockResolvedValue(undefined),
     };
 
     const registry = {
@@ -60,13 +61,13 @@ describe("Tool Registration", () => {
   }
 
   describe("Config Tools", () => {
-    it("should register 10 config tools", () => {
+    it("should register 11 config tools", () => {
       const { mockServer, toolNames } = createMockServer();
       const { registry } = createMockRegistry();
 
       registerConfigTools(mockServer, registry);
 
-      expect(toolNames).toHaveLength(10);
+      expect(toolNames).toHaveLength(11);
       expect(toolNames).toEqual([
         "llng_config_info",
         "llng_config_get",
@@ -78,6 +79,7 @@ describe("Tool Registration", () => {
         "llng_config_merge",
         "llng_config_rollback",
         "llng_config_update_cache",
+        "llng_config_test_email",
       ]);
     });
 
@@ -181,7 +183,12 @@ describe("Tool Registration", () => {
       const handler = toolCall[3];
       const result = await handler({ id: "session123", backend: "oidc" });
 
-      expect(mockTransport.sessionGet).toHaveBeenCalledWith("session123", "oidc");
+      expect(mockTransport.sessionGet).toHaveBeenCalledWith("session123", {
+        backend: "oidc",
+        refreshTokens: undefined,
+        persistent: undefined,
+        hash: undefined,
+      });
       expect(result.content[0].text).toBe(JSON.stringify(sessionData, null, 2));
     });
   });
@@ -441,7 +448,13 @@ describe("Tool Registration", () => {
 
       await handler({ ids: ["id1", "id2"], backend: "oidc" });
 
-      expect(mockTransport.sessionDelete).toHaveBeenCalledWith(["id1", "id2"], "oidc");
+      expect(mockTransport.sessionDelete).toHaveBeenCalledWith(["id1", "id2"], {
+        backend: "oidc",
+        refreshTokens: undefined,
+        persistent: undefined,
+        hash: undefined,
+        where: undefined,
+      });
     });
 
     it("should handle complex filter objects", async () => {
@@ -464,7 +477,13 @@ describe("Tool Registration", () => {
 
       await handler(filter);
 
-      expect(mockTransport.sessionSearch).toHaveBeenCalledWith(filter);
+      expect(mockTransport.sessionSearch).toHaveBeenCalledWith({
+        ...filter,
+        refreshTokens: undefined,
+        persistent: undefined,
+        hash: undefined,
+        idOnly: undefined,
+      });
     });
   });
 });

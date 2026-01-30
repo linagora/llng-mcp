@@ -74,7 +74,7 @@ describe("TransportRegistry", () => {
       default: "broken",
     });
     const registry = new TransportRegistry(config);
-    expect(() => registry.getTransport()).toThrow("has no 'api' configuration");
+    expect(() => registry.getTransport()).toThrow("API mode requires 'api' configuration");
   });
 
   it("returns OIDC config for instance", () => {
@@ -103,8 +103,8 @@ describe("TransportRegistry", () => {
     const registry = new TransportRegistry(makeConfig());
     const list = registry.listInstances();
     expect(list).toEqual([
-      { name: "prod", mode: "api", isDefault: true },
-      { name: "staging", mode: "ssh", isDefault: false },
+      { name: "prod", mode: "api", isDefault: true, hasManager: false },
+      { name: "staging", mode: "ssh", isDefault: false, hasManager: false },
     ]);
   });
 });

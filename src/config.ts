@@ -10,9 +10,7 @@ function parseMode(value: string): LlngMode {
   if (VALID_MODES.includes(value as LlngMode)) {
     return value as LlngMode;
   }
-  throw new Error(
-    `Invalid LLNG mode '${value}'. Valid modes: ${VALID_MODES.join(", ")}`,
-  );
+  throw new Error(`Invalid LLNG mode '${value}'. Valid modes: ${VALID_MODES.join(", ")}`);
 }
 
 export interface SshConfig {

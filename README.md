@@ -6,7 +6,7 @@ A Model Context Protocol (MCP) server that enables AI assistants to manage and m
 
 ## Overview
 
-llng-mcp bridges AI assistants with Lemonldap-NG, a powerful web SSO (Single Sign-On) system. Through 31 tools and 1 resource, it provides AI-native access to configuration management, session control, multi-factor authentication, OIDC testing, and user consent tracking.
+llng-mcp bridges AI assistants with Lemonldap-NG, a powerful web SSO (Single Sign-On) system. Through 35 tools and 1 resource, it provides AI-native access to configuration management, session control, multi-factor authentication, OIDC testing, and user consent tracking.
 
 ## Features
 
@@ -43,6 +43,13 @@ llng-mcp bridges AI assistants with Lemonldap-NG, a powerful web SSO (Single Sig
 
 - **llng_consent_list** - List user's OIDC provider consents
 - **llng_consent_delete** - Revoke OIDC provider consents
+
+### OIDC Relying Party Management Tools (4 tools)
+
+- **llng_oidc_rp_list** - List configured OIDC Relying Parties with clientID and displayName
+- **llng_oidc_rp_get** - Get full details of an OIDC RP by confKey
+- **llng_oidc_rp_add** - Add a new OIDC Relying Party (clientId, redirectUris, exportedVars, etc.)
+- **llng_oidc_rp_delete** - Delete an OIDC Relying Party by confKey
 
 ### OIDC Testing Tools (8 tools)
 
@@ -383,6 +390,15 @@ Configure your MCP client to connect to the stdio server. For example, with `cli
 | Tool           | Description              | Parameters | Mode |
 | -------------- | ------------------------ | ---------- | ---- |
 | llng_instances | List available instances | None       | Both |
+
+### OIDC Relying Party Management
+
+| Tool                | Description    | Parameters                                                                                     | Mode |
+| ------------------- | -------------- | ---------------------------------------------------------------------------------------------- | ---- |
+| llng_oidc_rp_list   | List OIDC RPs  | None                                                                                           | Both |
+| llng_oidc_rp_get    | Get RP details | confKey                                                                                        | Both |
+| llng_oidc_rp_add    | Add new RP     | confKey, clientId, redirectUris, clientSecret, displayName, exportedVars, extraClaims, options | Both |
+| llng_oidc_rp_delete | Delete RP      | confKey                                                                                        | Both |
 
 ### OIDC Testing
 

@@ -193,16 +193,8 @@ export class K8sTransport implements ILlngTransport {
   }
 
   async configGet(keys: string[]): Promise<Record<string, any>> {
-    const output = await this.execCli(["get", ...keys]);
-    const result: Record<string, any> = {};
-    const lines = output.trim().split("\n");
-    for (const line of lines) {
-      const match = line.match(/^(\S+)\s+=\s+(.*)$/);
-      if (match) {
-        result[match[1]] = match[2];
-      }
-    }
-    return result;
+    const output = await this.execCli(["-json", "get", ...keys]);
+    return JSON.parse(output);
   }
 
   async configSet(pairs: Record<string, any>, log?: string): Promise<void> {

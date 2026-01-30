@@ -90,14 +90,16 @@ Log      : Test config`;
     });
 
     it("configGet passes keys correctly", async () => {
-      setupSpawnMock("domain = example.com\nportal = https://portal.example.com");
+      setupSpawnMock(
+        JSON.stringify({ domain: "example.com", portal: "https://portal.example.com" }),
+      );
 
       const transport = new SshTransport(defaultConfig);
       const result = await transport.configGet(["domain", "portal"]);
 
       expect(spawnCalls).toHaveLength(1);
       expect(spawnCalls[0].cmd).toBe("/usr/share/lemonldap-ng/bin/lemonldap-ng-cli");
-      expect(spawnCalls[0].args).toEqual(["get", "domain", "portal"]);
+      expect(spawnCalls[0].args).toEqual(["-json", "get", "domain", "portal"]);
       expect(result).toEqual({ domain: "example.com", portal: "https://portal.example.com" });
     });
 

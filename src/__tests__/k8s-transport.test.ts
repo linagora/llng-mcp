@@ -98,7 +98,7 @@ describe("K8sTransport", () => {
       setupSpawnMock(
         { stdout: "lemonldap-ng-abc123" },
         { stdout: "Num      : 42\nAuthor   : admin\nDate     : 2025-01-30" },
-        { stdout: "domain = example.com" },
+        { stdout: JSON.stringify({ domain: "example.com" }) },
       );
 
       const transport = new K8sTransport(defaultConfig);
@@ -224,7 +224,7 @@ describe("K8sTransport", () => {
     it("configGet passes keys", async () => {
       setupSpawnMock(
         { stdout: "llng-pod-123" },
-        { stdout: "domain = example.com\nportal = https://portal.example.com" },
+        { stdout: JSON.stringify({ domain: "example.com", portal: "https://portal.example.com" }) },
       );
 
       const transport = new K8sTransport(defaultConfig);

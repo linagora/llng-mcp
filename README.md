@@ -83,9 +83,7 @@ Execute commands via SSH or locally using Lemonldap-NG CLI tools.
 {
   "mode": "ssh",
   "ssh": {
-    "cliPath": "/usr/share/lemonldap-ng/bin/lemonldap-ng-cli",
-    "sessionsPath": "/usr/share/lemonldap-ng/bin/lemonldap-ng-sessions",
-    "configEditorPath": "/usr/share/lemonldap-ng/bin/lmConfigEditor"
+    "binPrefix": "/usr/share/lemonldap-ng/bin"
   }
 }
 ```
@@ -100,12 +98,31 @@ For remote SSH connections:
     "user": "root",
     "port": 22,
     "sudo": "root",
-    "cliPath": "/usr/share/lemonldap-ng/bin/lemonldap-ng-cli",
-    "sessionsPath": "/usr/share/lemonldap-ng/bin/lemonldap-ng-sessions",
-    "configEditorPath": "/usr/share/lemonldap-ng/bin/lmConfigEditor"
+    "binPrefix": "/usr/share/lemonldap-ng/bin"
   }
 }
 ```
+
+#### `remoteCommand` - Execute via Docker, LXC, etc.
+
+The `remoteCommand` field inserts a command between SSH/sudo and the LLNG CLI binary. This allows running commands inside containers or through other wrappers:
+
+```json
+{
+  "mode": "ssh",
+  "ssh": {
+    "host": "server.example.com",
+    "remoteCommand": "docker exec sso-auth-1",
+    "binPrefix": "/usr/share/lemonldap-ng/bin"
+  }
+}
+```
+
+This produces: `ssh server.example.com docker exec sso-auth-1 /usr/share/lemonldap-ng/bin/lemonldap-ng-cli ...`
+
+#### `binPrefix` - Custom binary location
+
+The `binPrefix` field (default: `/usr/share/lemonldap-ng/bin`) sets the base directory for all LLNG CLI tools. Individual paths (`cliPath`, `sessionsPath`, `configEditorPath`) can still override specific binaries.
 
 **SSH Mode Limitations**: The following operations require API mode:
 - `llng_session_setKey` - Modify session attributes
@@ -133,6 +150,31 @@ Call REST endpoints on LLNG manager with optional HTTP Basic authentication.
   }
 }
 ```
+
+### Kubernetes Mode
+
+Execute commands inside Kubernetes pods using `kubectl exec`. The server automatically resolves a pod from a Deployment using label selectors.
+
+```json
+{
+  "mode": "k8s",
+  "k8s": {
+    "context": "prod-cluster",
+    "namespace": "auth",
+    "deployment": "lemonldap-ng",
+    "container": "sso"
+  }
+}
+```
+
+- **`context`** (optional) - kubectl context to use
+- **`namespace`** (required) - Kubernetes namespace
+- **`deployment`** (required) - Deployment name (used to derive the default pod selector `app.kubernetes.io/name=DEPLOYMENT`)
+- **`container`** (optional) - Container name within the pod (omit if single container)
+- **`podSelector`** (optional) - Override the label selector for pod resolution (default: `app.kubernetes.io/name=DEPLOYMENT`)
+- **`binPrefix`** (optional) - Path to LLNG binaries inside the pod (default: `/usr/share/lemonldap-ng/bin`)
+
+K8s mode has the same limitations as SSH mode (session modification, 2FA, and consents require API mode).
 
 ### OIDC Configuration (Optional)
 
@@ -197,9 +239,19 @@ Configuration can be overridden via environment variables:
 - `LLNG_SSH_USER` - SSH username
 - `LLNG_SSH_PORT` - SSH port (default: 22)
 - `LLNG_SSH_SUDO` - User to sudo to
-- `LLNG_SSH_CLI_PATH` - Path to lemonldap-ng-cli
-- `LLNG_SSH_SESSIONS_PATH` - Path to lemonldap-ng-sessions
-- `LLNG_SSH_CONFIG_EDITOR_PATH` - Path to lmConfigEditor
+- `LLNG_SSH_REMOTE_COMMAND` - Command inserted between SSH/sudo and LLNG binaries (e.g., `docker exec container-name`)
+- `LLNG_SSH_BIN_PREFIX` - Base directory for LLNG CLI tools (default: `/usr/share/lemonldap-ng/bin`)
+- `LLNG_SSH_CLI_PATH` - Path to lemonldap-ng-cli (overrides binPrefix)
+- `LLNG_SSH_SESSIONS_PATH` - Path to lemonldap-ng-sessions (overrides binPrefix)
+- `LLNG_SSH_CONFIG_EDITOR_PATH` - Path to lmConfigEditor (overrides binPrefix)
+
+**Kubernetes Configuration**
+- `LLNG_K8S_CONTEXT` - kubectl context
+- `LLNG_K8S_NAMESPACE` - Kubernetes namespace
+- `LLNG_K8S_DEPLOYMENT` - Deployment name
+- `LLNG_K8S_CONTAINER` - Container name (optional)
+- `LLNG_K8S_POD_SELECTOR` - Label selector override
+- `LLNG_K8S_BIN_PREFIX` - Path to LLNG binaries inside the pod
 
 **API Configuration**
 - `LLNG_API_URL` - API base URL
@@ -376,6 +428,7 @@ View test configuration in `docker-compose.test.yml`.
 llng-mcp uses an abstraction layer (`ILlngTransport`) with two implementations:
 
 - **SshTransport** - Executes CLI commands via SSH or locally using child_process
+- **K8sTransport** - Executes CLI commands inside Kubernetes pods via kubectl exec
 - **ApiTransport** - Makes HTTP requests to LLNG REST API
 
 A `TransportRegistry` manages transport instances per named configuration, enabling multi-instance support. All tools resolve their transport through the registry, allowing seamless switching between modes and instances.

@@ -26,7 +26,9 @@ export class TransportRegistry {
     if (!transport) {
       if (config.mode === "api") {
         if (!config.api) {
-          throw new Error(`Instance '${name}' is configured for API mode but has no 'api' configuration`);
+          throw new Error(
+            `Instance '${name}' is configured for API mode but has no 'api' configuration`,
+          );
         }
         transport = new ApiTransport(config.api);
       } else {

@@ -53,9 +53,7 @@ describe("Tool Registration", () => {
         redirectUri: "http://localhost:3000/callback",
         scope: "openid profile",
       }),
-      listInstances: vi.fn().mockReturnValue([
-        { name: "default", mode: "ssh", isDefault: true },
-      ]),
+      listInstances: vi.fn().mockReturnValue([{ name: "default", mode: "ssh", isDefault: true }]),
     } as unknown as TransportRegistry;
 
     return { registry, mockTransport };
@@ -424,7 +422,10 @@ describe("Tool Registration", () => {
 
       await handler({ keys: { domain: "example.com" }, log: "Updated domain" });
 
-      expect(mockTransport.configSet).toHaveBeenCalledWith({ domain: "example.com" }, "Updated domain");
+      expect(mockTransport.configSet).toHaveBeenCalledWith(
+        { domain: "example.com" },
+        "Updated domain",
+      );
     });
 
     it("should handle array parameters", async () => {

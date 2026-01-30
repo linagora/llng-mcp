@@ -445,8 +445,12 @@ describe("loadMultiConfig", () => {
     const multi = loadMultiConfig();
 
     expect(multi.instances.local.ssh?.cliPath).toBe("/usr/share/lemonldap-ng/bin/lemonldap-ng-cli");
-    expect(multi.instances.local.ssh?.sessionsPath).toBe("/usr/share/lemonldap-ng/bin/lemonldap-ng-sessions");
-    expect(multi.instances.local.ssh?.configEditorPath).toBe("/usr/share/lemonldap-ng/bin/lmConfigEditor");
+    expect(multi.instances.local.ssh?.sessionsPath).toBe(
+      "/usr/share/lemonldap-ng/bin/lemonldap-ng-sessions",
+    );
+    expect(multi.instances.local.ssh?.configEditorPath).toBe(
+      "/usr/share/lemonldap-ng/bin/lmConfigEditor",
+    );
   });
 
   it("applies env vars to the default instance only", () => {

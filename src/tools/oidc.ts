@@ -89,14 +89,15 @@ export function registerOidcTools(server: McpServer, registry: TransportRegistry
         }
 
         const metadata = await getDiscoveryMetadata(config);
-      return { content: [{ type: "text", text: JSON.stringify(metadata, null, 2) }] };
-    } catch (e: unknown) {
-      return {
-        content: [{ type: "text", text: `Error: ${e instanceof Error ? e.message : String(e)}` }],
-        isError: true,
-      };
-    }
-  });
+        return { content: [{ type: "text", text: JSON.stringify(metadata, null, 2) }] };
+      } catch (e: unknown) {
+        return {
+          content: [{ type: "text", text: `Error: ${e instanceof Error ? e.message : String(e)}` }],
+          isError: true,
+        };
+      }
+    },
+  );
 
   server.tool(
     "llng_oidc_authorize",

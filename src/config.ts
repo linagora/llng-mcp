@@ -186,8 +186,10 @@ function applyInstanceDefaults(partial: Partial<LlngConfig>): LlngConfig {
       ? {
           ...partial.ssh,
           cliPath: partial.ssh.cliPath || "/usr/share/lemonldap-ng/bin/lemonldap-ng-cli",
-          sessionsPath: partial.ssh.sessionsPath || "/usr/share/lemonldap-ng/bin/lemonldap-ng-sessions",
-          configEditorPath: partial.ssh.configEditorPath || "/usr/share/lemonldap-ng/bin/lmConfigEditor",
+          sessionsPath:
+            partial.ssh.sessionsPath || "/usr/share/lemonldap-ng/bin/lemonldap-ng-sessions",
+          configEditorPath:
+            partial.ssh.configEditorPath || "/usr/share/lemonldap-ng/bin/lmConfigEditor",
         }
       : {
           cliPath: "/usr/share/lemonldap-ng/bin/lemonldap-ng-cli",
@@ -221,9 +223,12 @@ function applyEnvOverrides(config: LlngConfig): void {
   if (process.env.LLNG_SSH_PORT) ensureSsh().port = parseInt(process.env.LLNG_SSH_PORT, 10);
   if (process.env.LLNG_SSH_SUDO) ensureSsh().sudo = process.env.LLNG_SSH_SUDO;
   if (process.env.LLNG_SSH_CLI_PATH) ensureSsh().cliPath = process.env.LLNG_SSH_CLI_PATH;
-  if (process.env.LLNG_SSH_SESSIONS_PATH) ensureSsh().sessionsPath = process.env.LLNG_SSH_SESSIONS_PATH;
-  if (process.env.LLNG_SSH_CONFIG_EDITOR_PATH) ensureSsh().configEditorPath = process.env.LLNG_SSH_CONFIG_EDITOR_PATH;
-  if (process.env.LLNG_SSH_DELETE_SESSION_PATH) ensureSsh().deleteSessionPath = process.env.LLNG_SSH_DELETE_SESSION_PATH;
+  if (process.env.LLNG_SSH_SESSIONS_PATH)
+    ensureSsh().sessionsPath = process.env.LLNG_SSH_SESSIONS_PATH;
+  if (process.env.LLNG_SSH_CONFIG_EDITOR_PATH)
+    ensureSsh().configEditorPath = process.env.LLNG_SSH_CONFIG_EDITOR_PATH;
+  if (process.env.LLNG_SSH_DELETE_SESSION_PATH)
+    ensureSsh().deleteSessionPath = process.env.LLNG_SSH_DELETE_SESSION_PATH;
 
   if (process.env.LLNG_API_URL) {
     config.api = config.api || { baseUrl: process.env.LLNG_API_URL };
@@ -265,8 +270,10 @@ function applyEnvOverrides(config: LlngConfig): void {
   // Ensure SSH defaults
   if (config.ssh) {
     config.ssh.cliPath = config.ssh.cliPath || "/usr/share/lemonldap-ng/bin/lemonldap-ng-cli";
-    config.ssh.sessionsPath = config.ssh.sessionsPath || "/usr/share/lemonldap-ng/bin/lemonldap-ng-sessions";
-    config.ssh.configEditorPath = config.ssh.configEditorPath || "/usr/share/lemonldap-ng/bin/lmConfigEditor";
+    config.ssh.sessionsPath =
+      config.ssh.sessionsPath || "/usr/share/lemonldap-ng/bin/lemonldap-ng-sessions";
+    config.ssh.configEditorPath =
+      config.ssh.configEditorPath || "/usr/share/lemonldap-ng/bin/lmConfigEditor";
   }
 }
 

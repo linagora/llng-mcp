@@ -190,26 +190,27 @@ export function registerConfigTools(server: McpServer, registry: TransportRegist
       try {
         const transport = registry.getTransport(args.instance);
         const result = await transport.configSave();
-      return {
-        content: [
-          {
-            type: "text",
-            text: result,
-          },
-        ],
-      };
-    } catch (error) {
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Error: ${error instanceof Error ? error.message : String(error)}`,
-          },
-        ],
-        isError: true,
-      };
-    }
-  });
+        return {
+          content: [
+            {
+              type: "text",
+              text: result,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+          isError: true,
+        };
+      }
+    },
+  );
 
   // 7. llng_config_import - Import LLNG config from JSON
   server.tool(
@@ -290,26 +291,27 @@ export function registerConfigTools(server: McpServer, registry: TransportRegist
       try {
         const transport = registry.getTransport(args.instance);
         await transport.configRollback();
-      return {
-        content: [
-          {
-            type: "text",
-            text: "Config rolled back successfully",
-          },
-        ],
-      };
-    } catch (error) {
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Error: ${error instanceof Error ? error.message : String(error)}`,
-          },
-        ],
-        isError: true,
-      };
-    }
-  });
+        return {
+          content: [
+            {
+              type: "text",
+              text: "Config rolled back successfully",
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+          isError: true,
+        };
+      }
+    },
+  );
 
   // 10. llng_config_update_cache - Force LLNG config cache update
   server.tool(
@@ -322,24 +324,25 @@ export function registerConfigTools(server: McpServer, registry: TransportRegist
       try {
         const transport = registry.getTransport(args.instance);
         await transport.configUpdateCache();
-      return {
-        content: [
-          {
-            type: "text",
-            text: "Config cache updated successfully",
-          },
-        ],
-      };
-    } catch (error) {
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Error: ${error instanceof Error ? error.message : String(error)}`,
-          },
-        ],
-        isError: true,
-      };
-    }
-  });
+        return {
+          content: [
+            {
+              type: "text",
+              text: "Config cache updated successfully",
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+          isError: true,
+        };
+      }
+    },
+  );
 }

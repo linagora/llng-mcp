@@ -9,6 +9,7 @@ export type TransportRole = "portal" | "manager";
 interface TransportEntry {
   portal: ILlngTransport;
   manager?: ILlngTransport;
+  managerResolved?: boolean;
 }
 
 export class TransportRegistry {
@@ -71,14 +72,19 @@ export class TransportRegistry {
     let entry = this.transports.get(name);
     if (!entry) {
       const portal = this.buildTransport(config);
-      const managerConfig = this.buildManagerConfig(config);
-      const manager = managerConfig ? this.buildTransport(managerConfig) : undefined;
-      entry = { portal, manager };
+      entry = { portal };
       this.transports.set(name, entry);
     }
 
-    if (role === "manager" && entry.manager) {
-      return entry.manager;
+    if (role === "manager") {
+      if (!entry.managerResolved) {
+        const managerConfig = this.buildManagerConfig(config);
+        entry.manager = managerConfig ? this.buildTransport(managerConfig) : undefined;
+        entry.managerResolved = true;
+      }
+      if (entry.manager) {
+        return entry.manager;
+      }
     }
     return entry.portal;
   }

@@ -126,6 +126,7 @@ This produces: `ssh server.example.com docker exec sso-auth-1 /usr/share/lemonld
 The `binPrefix` field (default: `/usr/share/lemonldap-ng/bin`) sets the base directory for all LLNG CLI tools. Individual paths (`cliPath`, `sessionsPath`, `configEditorPath`) can still override specific binaries.
 
 **SSH Mode Limitations**: The following operations require API mode:
+
 - `llng_2fa_list` - List 2FA devices
 - `llng_2fa_delete` - Remove 2FA devices
 - `llng_2fa_delType` - Remove all devices of type
@@ -173,7 +174,7 @@ Execute commands inside Kubernetes pods using `kubectl exec`. The server automat
 - **`podSelector`** (optional) - Override the label selector for pod resolution (default: `app.kubernetes.io/name=DEPLOYMENT`)
 - **`binPrefix`** (optional) - Path to LLNG binaries inside the pod (default: `/usr/share/lemonldap-ng/bin`)
 
-K8s mode has the same limitations as SSH mode (session modification, 2FA, and consents require API mode).
+K8s mode has the same limitations as SSH mode (2FA and consents require API mode).
 
 ### OIDC Configuration (Optional)
 
@@ -231,9 +232,11 @@ To manage multiple LLNG instances from a single MCP server, use the `instances` 
 Configuration can be overridden via environment variables:
 
 **Mode**
+
 - `LLNG_MODE` - Set to "ssh" or "api"
 
 **SSH Configuration**
+
 - `LLNG_SSH_HOST` - Hostname for SSH connection
 - `LLNG_SSH_USER` - SSH username
 - `LLNG_SSH_PORT` - SSH port (default: 22)
@@ -245,6 +248,7 @@ Configuration can be overridden via environment variables:
 - `LLNG_SSH_CONFIG_EDITOR_PATH` - Path to lmConfigEditor (overrides binPrefix)
 
 **Kubernetes Configuration**
+
 - `LLNG_K8S_CONTEXT` - kubectl context
 - `LLNG_K8S_NAMESPACE` - Kubernetes namespace
 - `LLNG_K8S_DEPLOYMENT` - Deployment name
@@ -253,12 +257,14 @@ Configuration can be overridden via environment variables:
 - `LLNG_K8S_BIN_PREFIX` - Path to LLNG binaries inside the pod
 
 **API Configuration**
+
 - `LLNG_API_URL` - API base URL
 - `LLNG_API_BASIC_USER` - HTTP Basic Auth username
 - `LLNG_API_BASIC_PASSWORD` - HTTP Basic Auth password
 - `LLNG_API_VERIFY_SSL` - Set to "false" to skip SSL verification
 
 **OIDC Configuration**
+
 - `LLNG_OIDC_ISSUER` - OIDC issuer URL
 - `LLNG_OIDC_CLIENT_ID` - OIDC client ID
 - `LLNG_OIDC_CLIENT_SECRET` - OIDC client secret
@@ -332,64 +338,64 @@ Configure your MCP client to connect to the stdio server. For example, with `cli
 
 ### Configuration Management
 
-| Tool | Description | Parameters | Mode |
-|------|-------------|------------|------|
-| llng_config_info | Get config metadata | None | Both |
-| llng_config_get | Fetch config values | keys (string[]) | Both |
-| llng_config_set | Update config values | keys (object), log (string) | Both |
-| llng_config_addKey | Add composite key | key, subkey, value | Both |
-| llng_config_delKey | Delete composite key | key, subkey | Both |
-| llng_config_export | Export as JSON | None | Both |
-| llng_config_import | Import from JSON | json (string) | Both |
-| llng_config_merge | Merge JSON | json (string) | Both |
-| llng_config_rollback | Revert previous | None | Both |
-| llng_config_update_cache | Force cache refresh | None | Both |
-| llng_config_test_email | Send test email | destination (string) | Both |
+| Tool                     | Description          | Parameters                  | Mode    |
+| ------------------------ | -------------------- | --------------------------- | ------- |
+| llng_config_info         | Get config metadata  | None                        | Both    |
+| llng_config_get          | Fetch config values  | keys (string[])             | Both    |
+| llng_config_set          | Update config values | keys (object), log (string) | Both    |
+| llng_config_addKey       | Add composite key    | key, subkey, value          | Both    |
+| llng_config_delKey       | Delete composite key | key, subkey                 | Both    |
+| llng_config_export       | Export as JSON       | None                        | Both    |
+| llng_config_import       | Import from JSON     | json (string)               | Both    |
+| llng_config_merge        | Merge JSON           | json (string)               | Both    |
+| llng_config_rollback     | Revert previous      | None                        | Both    |
+| llng_config_update_cache | Force cache refresh  | None                        | Both    |
+| llng_config_test_email   | Send test email      | destination (string)        | SSH/K8s |
 
 ### Session Management
 
-| Tool | Description | Parameters | Mode |
-|------|-------------|------------|------|
-| llng_session_get | Get session | id, backend, persistent, hash, refreshTokens | Both |
-| llng_session_search | Search sessions | where, select, backend, count, kind, persistent, hash, idOnly, refreshTokens | Both |
-| llng_session_delete | Delete sessions | ids (optional), where, kind, backend, persistent, hash, refreshTokens | Both |
-| llng_session_setKey | Modify session | id, keys, backend, persistent, hash, refreshTokens | Both |
-| llng_session_delKey | Remove attributes | id, keys, backend, persistent, hash, refreshTokens | Both |
-| llng_session_backup | Export sessions | backend, persistent, refreshTokens | Both |
+| Tool                | Description       | Parameters                                                                   | Mode |
+| ------------------- | ----------------- | ---------------------------------------------------------------------------- | ---- |
+| llng_session_get    | Get session       | id, backend, persistent, hash, refreshTokens                                 | Both |
+| llng_session_search | Search sessions   | where, select, backend, count, kind, persistent, hash, idOnly, refreshTokens | Both |
+| llng_session_delete | Delete sessions   | ids (optional), where, kind, backend, persistent, hash, refreshTokens        | Both |
+| llng_session_setKey | Modify session    | id, keys, backend, persistent, hash, refreshTokens                           | Both |
+| llng_session_delKey | Remove attributes | id, keys, backend, persistent, hash, refreshTokens                           | Both |
+| llng_session_backup | Export sessions   | backend, persistent, refreshTokens                                           | Both |
 
 ### Two-Factor Authentication
 
-| Tool | Description | Parameters | Mode |
-|------|-------------|------------|------|
-| llng_2fa_list | List devices | user (string) | API Only |
-| llng_2fa_delete | Remove devices | user, ids (string[]) | API Only |
-| llng_2fa_delType | Remove by type | user, type (string) | API Only |
+| Tool             | Description    | Parameters           | Mode     |
+| ---------------- | -------------- | -------------------- | -------- |
+| llng_2fa_list    | List devices   | user (string)        | API Only |
+| llng_2fa_delete  | Remove devices | user, ids (string[]) | API Only |
+| llng_2fa_delType | Remove by type | user, type (string)  | API Only |
 
 ### User Consents
 
-| Tool | Description | Parameters | Mode |
-|------|-------------|------------|------|
-| llng_consent_list | List consents | user (string) | API Only |
+| Tool                | Description     | Parameters           | Mode     |
+| ------------------- | --------------- | -------------------- | -------- |
+| llng_consent_list   | List consents   | user (string)        | API Only |
 | llng_consent_delete | Revoke consents | user, ids (string[]) | API Only |
 
 ### Instance Discovery
 
-| Tool | Description | Parameters | Mode |
-|------|-------------|------------|------|
-| llng_instances | List available instances | None | Both |
+| Tool           | Description              | Parameters | Mode |
+| -------------- | ------------------------ | ---------- | ---- |
+| llng_instances | List available instances | None       | Both |
 
 ### OIDC Testing
 
-| Tool | Description | Parameters | Requires Config |
-|------|-------------|------------|-----------------|
-| llng_oidc_metadata | Fetch discovery | None | OIDC config |
-| llng_oidc_authorize | Get auth URL | scope (optional) | OIDC config |
-| llng_oidc_tokens | Exchange code | code, code_verifier | OIDC config |
-| llng_oidc_userinfo | Get user info | access_token (string) | OIDC config |
-| llng_oidc_introspect | Inspect token | token (string) | OIDC config |
-| llng_oidc_refresh | Refresh token | refresh_token (string) | OIDC config |
-| llng_oidc_whoami | Decode ID token | id_token (string) | OIDC config |
-| llng_oidc_check_auth | Test protected | url, access_token | OIDC config |
+| Tool                 | Description     | Parameters             | Requires Config |
+| -------------------- | --------------- | ---------------------- | --------------- |
+| llng_oidc_metadata   | Fetch discovery | None                   | OIDC config     |
+| llng_oidc_authorize  | Get auth URL    | scope (optional)       | OIDC config     |
+| llng_oidc_tokens     | Exchange code   | code, code_verifier    | OIDC config     |
+| llng_oidc_userinfo   | Get user info   | access_token (string)  | OIDC config     |
+| llng_oidc_introspect | Inspect token   | token (string)         | OIDC config     |
+| llng_oidc_refresh    | Refresh token   | refresh_token (string) | OIDC config     |
+| llng_oidc_whoami     | Decode ID token | id_token (string)      | OIDC config     |
+| llng_oidc_check_auth | Test protected  | url, access_token      | OIDC config     |
 
 ## Development
 

@@ -293,6 +293,8 @@ export class ApiTransport implements ILlngTransport {
         where: options.where,
         backend: backendName,
         idOnly: true,
+        refreshTokens: options.refreshTokens,
+        persistent: options.persistent,
       };
       const matchingIds = await this.sessionSearch(searchFilters);
       for (const id of matchingIds) {

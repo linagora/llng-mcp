@@ -181,7 +181,7 @@ export function registerSessionTools(server: McpServer, registry: TransportRegis
         };
         const ids = args.ids || [];
         await transport.sessionDelete(ids, options);
-        const desc = args.where || args.kind ? "matching sessions" : `${ids.length} session(s)`;
+        const desc = options.where ? "matching sessions" : `${ids.length} session(s)`;
         return {
           content: [
             {

@@ -11,6 +11,7 @@ import { registerConsentTools } from "./tools/consents.js";
 import { registerOidcTools } from "./tools/oidc.js";
 import { registerOidcRpTools } from "./tools/oidc-rp.js";
 import { registerInstanceTools } from "./tools/instances.js";
+import { registerCliUtilityTools } from "./tools/cli-utilities.js";
 import { registerDocumentationResource } from "./resources/documentation.js";
 
 async function main() {
@@ -31,6 +32,7 @@ async function main() {
   registerOidcTools(server, registry);
   registerOidcRpTools(server, registry);
   registerInstanceTools(server, registry);
+  registerCliUtilityTools(server, registry);
 
   // Register resources
   registerDocumentationResource(server);

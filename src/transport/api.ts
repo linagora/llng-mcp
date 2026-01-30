@@ -422,4 +422,8 @@ export class ApiTransport implements ILlngTransport {
       );
     }
   }
+
+  async execScript(): Promise<string> {
+    throw new Error("execScript is not supported via API. Use SSH or K8s mode.");
+  }
 }

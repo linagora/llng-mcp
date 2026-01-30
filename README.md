@@ -6,7 +6,7 @@ A Model Context Protocol (MCP) server that enables AI assistants to manage and m
 
 ## Overview
 
-llng-mcp bridges AI assistants with Lemonldap-NG, a powerful web SSO (Single Sign-On) system. Through 35 tools and 1 resource, it provides AI-native access to configuration management, session control, multi-factor authentication, OIDC testing, and user consent tracking.
+llng-mcp bridges AI assistants with Lemonldap-NG, a powerful web SSO (Single Sign-On) system. Through 42 tools and 1 resource, it provides AI-native access to configuration management, session control, multi-factor authentication, OIDC testing, and user consent tracking.
 
 ## Features
 
@@ -50,6 +50,16 @@ llng-mcp bridges AI assistants with Lemonldap-NG, a powerful web SSO (Single Sig
 - **llng_oidc_rp_get** - Get full details of an OIDC RP by confKey
 - **llng_oidc_rp_add** - Add a new OIDC Relying Party (clientId, redirectUris, exportedVars, etc.)
 - **llng_oidc_rp_delete** - Delete an OIDC Relying Party by confKey
+
+### CLI Utility Tools (7 tools)
+
+- **llng_download_saml_metadata** - Download SAML metadata from a remote IdP
+- **llng_import_metadata** - Import a SAML federation into LLNG config
+- **llng_delete_session** - Delete user sessions by UID pattern
+- **llng_user_attributes** - Look up user attributes
+- **llng_purge_central_cache** - Purge expired sessions from central cache
+- **llng_purge_local_cache** - Purge local handler cache
+- **llng_rotate_oidc_keys** - Rotate OIDC signing keys
 
 ### OIDC Testing Tools (8 tools)
 
@@ -399,6 +409,18 @@ Configure your MCP client to connect to the stdio server. For example, with `cli
 | llng_oidc_rp_get    | Get RP details | confKey                                                                                        | Both |
 | llng_oidc_rp_add    | Add new RP     | confKey, clientId, redirectUris, clientSecret, displayName, exportedVars, extraClaims, options | Both |
 | llng_oidc_rp_delete | Delete RP      | confKey                                                                                        | Both |
+
+### CLI Utilities
+
+| Tool                        | Description              | Parameters                                                              | Mode    |
+| --------------------------- | ------------------------ | ----------------------------------------------------------------------- | ------- |
+| llng_download_saml_metadata | Download SAML metadata   | url, outputFile, noCheck, verbose                                       | SSH/K8s |
+| llng_import_metadata        | Import SAML federation   | url, spPrefix, idpPrefix, ignoreSp, ignoreIdp, remove, noCheck, verbose | SSH/K8s |
+| llng_delete_session         | Delete sessions by UID   | uid, force, debug                                                       | SSH/K8s |
+| llng_user_attributes        | Look up user attributes  | username, field                                                         | SSH/K8s |
+| llng_purge_central_cache    | Purge central cache      | debug, force, json                                                      | SSH/K8s |
+| llng_purge_local_cache      | Purge local cache        | debug                                                                   | SSH/K8s |
+| llng_rotate_oidc_keys       | Rotate OIDC signing keys | debug                                                                   | SSH/K8s |
 
 ### OIDC Testing
 

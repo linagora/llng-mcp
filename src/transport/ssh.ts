@@ -422,4 +422,9 @@ export class SshTransport implements ILlngTransport {
   async consentsDelete(_user: string, _ids: string[]): Promise<void> {
     throw new Error("consentsDelete is not supported via CLI. Use API mode.");
   }
+
+  async execScript(scriptName: string, args: string[]): Promise<string> {
+    const prefix = this.config.binPrefix || "/usr/share/lemonldap-ng/bin";
+    return this.exec([`${prefix}/${scriptName}`, ...args]);
+  }
 }

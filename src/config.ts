@@ -303,15 +303,23 @@ export function loadMultiConfig(): LlngMultiConfig {
 
   // Detect multi-instance format
   if (fileConfig && fileConfig.instances) {
-    const multi: LlngMultiConfig = {
-      instances: {},
-      default: fileConfig.default || Object.keys(fileConfig.instances)[0] || "default",
-    };
+    const instances: Record<string, LlngConfig> = {};
     for (const [name, instanceConfig] of Object.entries(fileConfig.instances)) {
-      multi.instances[name] = applyInstanceDefaults(instanceConfig as Partial<LlngConfig>);
+      instances[name] = applyInstanceDefaults(instanceConfig as Partial<LlngConfig>);
     }
-    // Apply env vars to the default instance
-    applyEnvOverrides(multi.instances[multi.default]);
+    const instanceNames = Object.keys(instances);
+    let defaultName: string | undefined = fileConfig.default;
+    if (!defaultName || !instances[defaultName]) {
+      defaultName = instanceNames[0] || "default";
+    }
+    const multi: LlngMultiConfig = {
+      instances,
+      default: defaultName,
+    };
+    // Apply env vars to the default instance, if it exists
+    if (multi.instances[multi.default]) {
+      applyEnvOverrides(multi.instances[multi.default]);
+    }
     return multi;
   }
 

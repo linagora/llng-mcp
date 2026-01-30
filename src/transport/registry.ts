@@ -13,7 +13,7 @@ export class TransportRegistry {
     this.defaultInstance = multiConfig.default;
   }
 
-  getTransport(instance?: string): ILlngTransport {
+  private resolveInstance(instance?: string): { name: string; config: LlngInstanceConfig } {
     const name = instance || this.defaultInstance;
     const config = this.configs[name];
     if (!config) {
@@ -21,6 +21,11 @@ export class TransportRegistry {
         `Unknown instance '${name}'. Available instances: ${Object.keys(this.configs).join(", ")}`,
       );
     }
+    return { name, config };
+  }
+
+  getTransport(instance?: string): ILlngTransport {
+    const { name, config } = this.resolveInstance(instance);
 
     let transport = this.transports.get(name);
     if (!transport) {
@@ -47,13 +52,7 @@ export class TransportRegistry {
   }
 
   getOidcConfig(instance?: string): OidcConfig | undefined {
-    const name = instance || this.defaultInstance;
-    const config = this.configs[name];
-    if (!config) {
-      throw new Error(
-        `Unknown instance '${name}'. Available instances: ${Object.keys(this.configs).join(", ")}`,
-      );
-    }
+    const { config } = this.resolveInstance(instance);
     return config.oidc;
   }
 

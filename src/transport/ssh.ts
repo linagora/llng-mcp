@@ -1,9 +1,13 @@
 import { spawn } from "child_process";
-import { SshConfig } from "../config.js";
+import { SshConfig, resolvePaths } from "../config.js";
 import { ILlngTransport, SessionFilter, ConfigInfo } from "./interface.js";
 
 export class SshTransport implements ILlngTransport {
-  constructor(private config: SshConfig) {}
+  private paths: { cliPath: string; sessionsPath: string; configEditorPath: string };
+
+  constructor(private config: SshConfig) {
+    this.paths = resolvePaths(config.binPrefix, config.cliPath, config.sessionsPath, config.configEditorPath);
+  }
 
   private async exec(args: string[], env?: Record<string, string>): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -35,6 +39,11 @@ export class SshTransport implements ILlngTransport {
           remoteCmd = `env ${envPrefix} ${remoteCmd}`;
         }
 
+        // Insert remoteCommand between sudo and the LLNG command
+        if (this.config.remoteCommand) {
+          remoteCmd = `${this.config.remoteCommand} ${remoteCmd}`;
+        }
+
         if (this.config.sudo) {
           remoteCmd = `sudo -u ${this.shellQuote(this.config.sudo)} ${remoteCmd}`;
         }
@@ -44,7 +53,16 @@ export class SshTransport implements ILlngTransport {
         // Local mode
         if (this.config.sudo) {
           cmd = "sudo";
-          cmdArgs = ["-u", this.config.sudo, ...args];
+          cmdArgs = ["-u", this.config.sudo];
+          if (this.config.remoteCommand) {
+            cmdArgs.push(...this.config.remoteCommand.split(" "), ...args);
+          } else {
+            cmdArgs.push(...args);
+          }
+        } else if (this.config.remoteCommand) {
+          const parts = this.config.remoteCommand.split(" ");
+          cmd = parts[0];
+          cmdArgs = [...parts.slice(1), ...args];
         } else {
           cmd = args[0];
           cmdArgs = args.slice(1);
@@ -99,6 +117,10 @@ export class SshTransport implements ILlngTransport {
         // Build the remote command
         let remoteCmd = args.map((arg) => this.shellQuote(arg)).join(" ");
 
+        if (this.config.remoteCommand) {
+          remoteCmd = `${this.config.remoteCommand} ${remoteCmd}`;
+        }
+
         if (this.config.sudo) {
           remoteCmd = `sudo -u ${this.shellQuote(this.config.sudo)} ${remoteCmd}`;
         }
@@ -108,7 +130,16 @@ export class SshTransport implements ILlngTransport {
         // Local mode
         if (this.config.sudo) {
           cmd = "sudo";
-          cmdArgs = ["-u", this.config.sudo, ...args];
+          cmdArgs = ["-u", this.config.sudo];
+          if (this.config.remoteCommand) {
+            cmdArgs.push(...this.config.remoteCommand.split(" "), ...args);
+          } else {
+            cmdArgs.push(...args);
+          }
+        } else if (this.config.remoteCommand) {
+          const parts = this.config.remoteCommand.split(" ");
+          cmd = parts[0];
+          cmdArgs = [...parts.slice(1), ...args];
         } else {
           cmd = args[0];
           cmdArgs = args.slice(1);
@@ -150,15 +181,15 @@ export class SshTransport implements ILlngTransport {
   }
 
   private async execCli(subArgs: string[]): Promise<string> {
-    return this.exec([this.config.cliPath, ...subArgs]);
+    return this.exec([this.paths.cliPath, ...subArgs]);
   }
 
   private async execSessions(subArgs: string[]): Promise<string> {
-    return this.exec([this.config.sessionsPath, ...subArgs]);
+    return this.exec([this.paths.sessionsPath, ...subArgs]);
   }
 
   private async execConfigEditor(subArgs: string[]): Promise<string> {
-    return this.exec([this.config.configEditorPath, ...subArgs], { EDITOR: "cat" });
+    return this.exec([this.paths.configEditorPath, ...subArgs], { EDITOR: "cat" });
   }
 
   // Config methods
@@ -222,11 +253,11 @@ export class SshTransport implements ILlngTransport {
   }
 
   async configRestore(json: string): Promise<void> {
-    await this.execWithStdin([this.config.cliPath, "restore", "-yes", "1", "-"], json);
+    await this.execWithStdin([this.paths.cliPath, "restore", "-yes", "1", "-"], json);
   }
 
   async configMerge(json: string): Promise<void> {
-    await this.execWithStdin([this.config.cliPath, "merge", "-yes", "1", "-"], json);
+    await this.execWithStdin([this.paths.cliPath, "merge", "-yes", "1", "-"], json);
   }
 
   async configRollback(): Promise<void> {
@@ -278,7 +309,7 @@ export class SshTransport implements ILlngTransport {
     // Use llngDeleteSession script instead
     const deleteScriptPath =
       this.config.deleteSessionPath ||
-      this.config.cliPath.replace("lemonldap-ng-cli", "llngDeleteSession");
+      this.paths.cliPath.replace("lemonldap-ng-cli", "llngDeleteSession");
     for (const id of ids) {
       const args = [deleteScriptPath, id];
       if (backend) {

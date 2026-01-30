@@ -541,4 +541,170 @@ Log      : Test config`;
       // In SSH mode, it uses "env KEY=VALUE command"
     });
   });
+
+  describe("remoteCommand", () => {
+    it("remoteCommand is inserted in SSH mode between sudo and LLNG command", async () => {
+      const config: SshConfig = {
+        ...defaultConfig,
+        host: "server.example.com",
+        sudo: "www-data",
+        remoteCommand: "docker exec sso-auth-1",
+      };
+
+      setupSpawnMock("Num      : 42\nAuthor   : admin\nDate     : 2025-01-30");
+
+      const transport = new SshTransport(config);
+      await transport.configInfo();
+
+      expect(spawnCalls).toHaveLength(1);
+      expect(spawnCalls[0].cmd).toBe("ssh");
+      const remoteCmd = spawnCalls[0].args[1];
+      // Should be: sudo -u 'www-data' docker exec sso-auth-1 '/path/cli' 'info'
+      expect(remoteCmd).toBe(
+        "sudo -u 'www-data' docker exec sso-auth-1 '/usr/share/lemonldap-ng/bin/lemonldap-ng-cli' 'info'",
+      );
+    });
+
+    it("remoteCommand in SSH mode without sudo", async () => {
+      const config: SshConfig = {
+        ...defaultConfig,
+        host: "server.example.com",
+        remoteCommand: "docker exec sso-auth-1",
+      };
+
+      setupSpawnMock("Num      : 42\nAuthor   : admin\nDate     : 2025-01-30");
+
+      const transport = new SshTransport(config);
+      await transport.configInfo();
+
+      expect(spawnCalls).toHaveLength(1);
+      const remoteCmd = spawnCalls[0].args[1];
+      expect(remoteCmd).toBe(
+        "docker exec sso-auth-1 '/usr/share/lemonldap-ng/bin/lemonldap-ng-cli' 'info'",
+      );
+    });
+
+    it("remoteCommand in local mode (no host, no sudo)", async () => {
+      const config: SshConfig = {
+        ...defaultConfig,
+        remoteCommand: "docker exec sso-auth-1",
+      };
+
+      setupSpawnMock("Num      : 42\nAuthor   : admin\nDate     : 2025-01-30");
+
+      const transport = new SshTransport(config);
+      await transport.configInfo();
+
+      expect(spawnCalls).toHaveLength(1);
+      expect(spawnCalls[0].cmd).toBe("docker");
+      expect(spawnCalls[0].args).toEqual([
+        "exec",
+        "sso-auth-1",
+        "/usr/share/lemonldap-ng/bin/lemonldap-ng-cli",
+        "info",
+      ]);
+    });
+
+    it("remoteCommand in local mode with sudo", async () => {
+      const config: SshConfig = {
+        ...defaultConfig,
+        sudo: "www-data",
+        remoteCommand: "docker exec sso-auth-1",
+      };
+
+      setupSpawnMock("Num      : 42\nAuthor   : admin\nDate     : 2025-01-30");
+
+      const transport = new SshTransport(config);
+      await transport.configInfo();
+
+      expect(spawnCalls).toHaveLength(1);
+      expect(spawnCalls[0].cmd).toBe("sudo");
+      expect(spawnCalls[0].args).toEqual([
+        "-u",
+        "www-data",
+        "docker",
+        "exec",
+        "sso-auth-1",
+        "/usr/share/lemonldap-ng/bin/lemonldap-ng-cli",
+        "info",
+      ]);
+    });
+  });
+
+  describe("binPrefix", () => {
+    it("binPrefix resolves CLI paths", async () => {
+      const config: SshConfig = {
+        binPrefix: "/opt/llng/bin",
+      };
+
+      setupSpawnMock("Num      : 42\nAuthor   : admin\nDate     : 2025-01-30");
+
+      const transport = new SshTransport(config);
+      await transport.configInfo();
+
+      expect(spawnCalls).toHaveLength(1);
+      expect(spawnCalls[0].cmd).toBe("/opt/llng/bin/lemonldap-ng-cli");
+      expect(spawnCalls[0].args).toEqual(["info"]);
+    });
+
+    it("binPrefix resolves sessions path", async () => {
+      const config: SshConfig = {
+        binPrefix: "/opt/llng/bin",
+      };
+
+      setupSpawnMock("[]");
+
+      const transport = new SshTransport(config);
+      await transport.sessionBackup();
+
+      expect(spawnCalls).toHaveLength(1);
+      expect(spawnCalls[0].cmd).toBe("/opt/llng/bin/lemonldap-ng-sessions");
+    });
+
+    it("explicit cliPath overrides binPrefix", async () => {
+      const config: SshConfig = {
+        binPrefix: "/opt/llng/bin",
+        cliPath: "/custom/path/lemonldap-ng-cli",
+      };
+
+      setupSpawnMock("Num      : 42\nAuthor   : admin\nDate     : 2025-01-30");
+
+      const transport = new SshTransport(config);
+      await transport.configInfo();
+
+      expect(spawnCalls).toHaveLength(1);
+      expect(spawnCalls[0].cmd).toBe("/custom/path/lemonldap-ng-cli");
+    });
+
+    it("default binPrefix is used when neither binPrefix nor paths provided", async () => {
+      const config: SshConfig = {};
+
+      setupSpawnMock("Num      : 42\nAuthor   : admin\nDate     : 2025-01-30");
+
+      const transport = new SshTransport(config);
+      await transport.configInfo();
+
+      expect(spawnCalls).toHaveLength(1);
+      expect(spawnCalls[0].cmd).toBe("/usr/share/lemonldap-ng/bin/lemonldap-ng-cli");
+    });
+
+    it("binPrefix with SSH and remoteCommand", async () => {
+      const config: SshConfig = {
+        host: "server.example.com",
+        remoteCommand: "docker exec sso-auth-1",
+        binPrefix: "/opt/llng/bin",
+      };
+
+      setupSpawnMock("Num      : 42\nAuthor   : admin\nDate     : 2025-01-30");
+
+      const transport = new SshTransport(config);
+      await transport.configInfo();
+
+      expect(spawnCalls).toHaveLength(1);
+      const remoteCmd = spawnCalls[0].args[1];
+      expect(remoteCmd).toBe(
+        "docker exec sso-auth-1 '/opt/llng/bin/lemonldap-ng-cli' 'info'",
+      );
+    });
+  });
 });

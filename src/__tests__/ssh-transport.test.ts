@@ -788,4 +788,18 @@ Log      : Test config`;
       expect(remoteCmd).toBe("docker exec sso-auth-1 '/opt/llng/bin/lemonldap-ng-cli' 'info'");
     });
   });
+
+  describe("execScript", () => {
+    it("execScript runs script from binPrefix directory", async () => {
+      setupSpawnMock("Keys rotated successfully");
+
+      const transport = new SshTransport(defaultConfig);
+      const result = await transport.execScript("rotateOidcKeys", []);
+
+      expect(spawnCalls).toHaveLength(1);
+      expect(spawnCalls[0].cmd).toBe("/usr/share/lemonldap-ng/bin/rotateOidcKeys");
+      expect(spawnCalls[0].args).toEqual([]);
+      expect(result).toBe("Keys rotated successfully");
+    });
+  });
 });

@@ -313,14 +313,12 @@ Log      : Test config`;
   });
 
   describe("Error handling", () => {
-    it("non-zero exit code throws with stderr message", async () => {
+    it("non-zero exit code throws with exit code", async () => {
       setupSpawnMock("", "Command failed: invalid argument", 1);
 
       const transport = new SshTransport(defaultConfig);
 
-      await expect(transport.configInfo()).rejects.toThrow(
-        "Command failed with exit code 1: Command failed: invalid argument",
-      );
+      await expect(transport.configInfo()).rejects.toThrow("Command failed with exit code 1");
     });
 
     it("process error event triggers rejection", async () => {
@@ -334,7 +332,7 @@ Log      : Test config`;
 
       const transport = new SshTransport(defaultConfig);
 
-      await expect(transport.configInfo()).rejects.toThrow("spawn ENOENT");
+      await expect(transport.configInfo()).rejects.toThrow("Command execution failed");
     });
   });
 

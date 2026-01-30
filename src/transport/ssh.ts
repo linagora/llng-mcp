@@ -54,14 +54,13 @@ export class SshTransport implements ILlngTransport {
       const spawnOpts = env ? { env: { ...process.env, ...env } } : undefined;
       const proc = spawn(cmd, cmdArgs, spawnOpts);
       let stdout = "";
-      let stderr = "";
 
       proc.stdout.on("data", (data) => {
         stdout += data.toString();
       });
 
-      proc.stderr.on("data", (data) => {
-        stderr += data.toString();
+      proc.stderr.on("data", () => {
+        // stderr is consumed but not exposed to clients for security
       });
 
       proc.on("close", (code) => {
@@ -118,14 +117,13 @@ export class SshTransport implements ILlngTransport {
 
       const proc = spawn(cmd, cmdArgs);
       let stdout = "";
-      let stderr = "";
 
       proc.stdout.on("data", (data) => {
         stdout += data.toString();
       });
 
-      proc.stderr.on("data", (data) => {
-        stderr += data.toString();
+      proc.stderr.on("data", () => {
+        // stderr is consumed but not exposed to clients for security
       });
 
       proc.on("close", (code) => {
@@ -170,7 +168,7 @@ export class SshTransport implements ILlngTransport {
     const lines = output.trim().split("\n");
     const data: Record<string, string> = {};
     for (const line of lines) {
-      const match = line.match(/^(\S+)\s+:\s+(.*)$/);
+      const match = line.match(/^(\S+)\s*:\s*(.*)$/);
       if (match) {
         data[match[1]] = match[2];
       }

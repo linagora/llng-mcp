@@ -72,9 +72,7 @@ function base64UrlDecode(str: string): string {
   // Convert base64url to base64
   let base64 = str.replace(/-/g, "+").replace(/_/g, "/");
   // Add padding if needed
-  while (base64.length % 4 !== 0) {
-    base64 += "=";
-  }
+  base64 += "=".repeat((4 - (base64.length % 4)) % 4);
   return Buffer.from(base64, "base64").toString("utf-8");
 }
 
@@ -87,8 +85,11 @@ export function registerOidcTools(server: McpServer, config: OidcConfig | undefi
 
       const metadata = await getDiscoveryMetadata(config);
       return { content: [{ type: "text", text: JSON.stringify(metadata, null, 2) }] };
-    } catch (e: any) {
-      return { content: [{ type: "text", text: `Error: ${e.message}` }], isError: true };
+    } catch (e: unknown) {
+      return {
+        content: [{ type: "text", text: `Error: ${e instanceof Error ? e.message : String(e)}` }],
+        isError: true,
+      };
     }
   });
 
@@ -124,8 +125,11 @@ export function registerOidcTools(server: McpServer, config: OidcConfig | undefi
         };
 
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
-      } catch (e: any) {
-        return { content: [{ type: "text", text: `Error: ${e.message}` }], isError: true };
+      } catch (e: unknown) {
+        return {
+          content: [{ type: "text", text: `Error: ${e instanceof Error ? e.message : String(e)}` }],
+          isError: true,
+        };
       }
     },
   );
@@ -170,8 +174,11 @@ export function registerOidcTools(server: McpServer, config: OidcConfig | undefi
         }
 
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
-      } catch (e: any) {
-        return { content: [{ type: "text", text: `Error: ${e.message}` }], isError: true };
+      } catch (e: unknown) {
+        return {
+          content: [{ type: "text", text: `Error: ${e instanceof Error ? e.message : String(e)}` }],
+          isError: true,
+        };
       }
     },
   );
@@ -203,8 +210,11 @@ export function registerOidcTools(server: McpServer, config: OidcConfig | undefi
         }
 
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
-      } catch (e: any) {
-        return { content: [{ type: "text", text: `Error: ${e.message}` }], isError: true };
+      } catch (e: unknown) {
+        return {
+          content: [{ type: "text", text: `Error: ${e instanceof Error ? e.message : String(e)}` }],
+          isError: true,
+        };
       }
     },
   );
@@ -254,8 +264,11 @@ export function registerOidcTools(server: McpServer, config: OidcConfig | undefi
         }
 
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
-      } catch (e: any) {
-        return { content: [{ type: "text", text: `Error: ${e.message}` }], isError: true };
+      } catch (e: unknown) {
+        return {
+          content: [{ type: "text", text: `Error: ${e instanceof Error ? e.message : String(e)}` }],
+          isError: true,
+        };
       }
     },
   );
@@ -298,8 +311,11 @@ export function registerOidcTools(server: McpServer, config: OidcConfig | undefi
         }
 
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
-      } catch (e: any) {
-        return { content: [{ type: "text", text: `Error: ${e.message}` }], isError: true };
+      } catch (e: unknown) {
+        return {
+          content: [{ type: "text", text: `Error: ${e instanceof Error ? e.message : String(e)}` }],
+          isError: true,
+        };
       }
     },
   );
@@ -321,12 +337,16 @@ export function registerOidcTools(server: McpServer, config: OidcConfig | undefi
 
         const payload = JSON.parse(base64UrlDecode(parts[1]));
         const result = {
-          _warning: "UNVERIFIED - JWT signature was NOT checked. Do not trust these claims for authorization decisions.",
+          _warning:
+            "UNVERIFIED - JWT signature was NOT checked. Do not trust these claims for authorization decisions.",
           ...payload,
         };
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
-      } catch (e: any) {
-        return { content: [{ type: "text", text: `Error: ${e.message}` }], isError: true };
+      } catch (e: unknown) {
+        return {
+          content: [{ type: "text", text: `Error: ${e instanceof Error ? e.message : String(e)}` }],
+          isError: true,
+        };
       }
     },
   );
@@ -343,7 +363,12 @@ export function registerOidcTools(server: McpServer, config: OidcConfig | undefi
 
         if (!isUrlSafe(params.url)) {
           return {
-            content: [{ type: "text", text: "Error: URL must be a public HTTP(S) URL. Private, loopback, and link-local addresses are blocked." }],
+            content: [
+              {
+                type: "text",
+                text: "Error: URL must be a public HTTP(S) URL. Private, loopback, and link-local addresses are blocked.",
+              },
+            ],
             isError: true,
           };
         }
@@ -362,8 +387,11 @@ export function registerOidcTools(server: McpServer, config: OidcConfig | undefi
         };
 
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
-      } catch (e: any) {
-        return { content: [{ type: "text", text: `Error: ${e.message}` }], isError: true };
+      } catch (e: unknown) {
+        return {
+          content: [{ type: "text", text: `Error: ${e instanceof Error ? e.message : String(e)}` }],
+          isError: true,
+        };
       }
     },
   );

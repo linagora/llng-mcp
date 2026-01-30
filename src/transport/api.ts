@@ -63,7 +63,14 @@ export class ApiTransport implements ILlngTransport {
         return await response.json();
       } else {
         const text = await response.text();
-        return text ? JSON.parse(text) : {};
+        if (!text) {
+          return {};
+        }
+        try {
+          return JSON.parse(text);
+        } catch {
+          return text;
+        }
       }
     } catch (error) {
       if (error instanceof Error) {
@@ -166,10 +173,11 @@ export class ApiTransport implements ILlngTransport {
 
     for (const key in source) {
       if (key === "__proto__" || key === "constructor" || key === "prototype") continue;
-      if (source[key] instanceof Object && !Array.isArray(source[key])) {
-        result[key] = this.deepMerge(result[key] || {}, source[key]);
+      const value = source[key];
+      if (value !== null && value instanceof Object && !Array.isArray(value)) {
+        result[key] = this.deepMerge(result[key] || {}, value);
       } else {
-        result[key] = source[key];
+        result[key] = value;
       }
     }
 
@@ -198,7 +206,10 @@ export class ApiTransport implements ILlngTransport {
 
   async sessionGet(id: string, backend?: string): Promise<Record<string, any>> {
     const backendName = backend || "global";
-    return await this.request("GET", `/api/v1/sessions/${encodeURIComponent(backendName)}/${encodeURIComponent(id)}`);
+    return await this.request(
+      "GET",
+      `/api/v1/sessions/${encodeURIComponent(backendName)}/${encodeURIComponent(id)}`,
+    );
   }
 
   async sessionSearch(filters: SessionFilter): Promise<any[]> {
@@ -224,7 +235,10 @@ export class ApiTransport implements ILlngTransport {
     }
 
     const queryString = queryParams.length > 0 ? `?${queryParams.join("&")}` : "";
-    const result = await this.request("GET", `/api/v1/sessions/${encodeURIComponent(backend)}${queryString}`);
+    const result = await this.request(
+      "GET",
+      `/api/v1/sessions/${encodeURIComponent(backend)}${queryString}`,
+    );
 
     // API returns an object with session IDs as keys, convert to array
     if (typeof result === "object" && !Array.isArray(result)) {
@@ -241,7 +255,10 @@ export class ApiTransport implements ILlngTransport {
     const backendName = backend || "global";
 
     for (const id of ids) {
-      await this.request("DELETE", `/api/v1/sessions/${encodeURIComponent(backendName)}/${encodeURIComponent(id)}`);
+      await this.request(
+        "DELETE",
+        `/api/v1/sessions/${encodeURIComponent(backendName)}/${encodeURIComponent(id)}`,
+      );
     }
   }
 
@@ -259,7 +276,10 @@ export class ApiTransport implements ILlngTransport {
 
   async sessionBackup(backend?: string): Promise<string> {
     const backendName = backend || "global";
-    const sessions = await this.request("GET", `/api/v1/sessions/${encodeURIComponent(backendName)}`);
+    const sessions = await this.request(
+      "GET",
+      `/api/v1/sessions/${encodeURIComponent(backendName)}`,
+    );
     return JSON.stringify(sessions, null, 2);
   }
 
@@ -281,7 +301,10 @@ export class ApiTransport implements ILlngTransport {
 
   async secondFactorsDelete(user: string, ids: string[]): Promise<void> {
     for (const id of ids) {
-      await this.request("DELETE", `/api/v1/secondfactors/${encodeURIComponent(user)}/${encodeURIComponent(id)}`);
+      await this.request(
+        "DELETE",
+        `/api/v1/secondfactors/${encodeURIComponent(user)}/${encodeURIComponent(id)}`,
+      );
     }
   }
 
@@ -314,7 +337,10 @@ export class ApiTransport implements ILlngTransport {
 
   async consentsDelete(user: string, ids: string[]): Promise<void> {
     for (const id of ids) {
-      await this.request("DELETE", `/api/v1/consents/${encodeURIComponent(user)}/${encodeURIComponent(id)}`);
+      await this.request(
+        "DELETE",
+        `/api/v1/consents/${encodeURIComponent(user)}/${encodeURIComponent(id)}`,
+      );
     }
   }
 }

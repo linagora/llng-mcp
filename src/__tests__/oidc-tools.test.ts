@@ -145,7 +145,12 @@ describe("OIDC Tools", () => {
 
       expect(result.isError).toBeUndefined();
       const decoded = JSON.parse(result.content[0].text);
-      expect(decoded).toEqual(payload);
+      expect(decoded._warning).toContain("UNVERIFIED");
+      expect(decoded.sub).toBe(payload.sub);
+      expect(decoded.name).toBe(payload.name);
+      expect(decoded.email).toBe(payload.email);
+      expect(decoded.iat).toBe(payload.iat);
+      expect(decoded.exp).toBe(payload.exp);
     });
 
     it("should return error for invalid JWT format", async () => {

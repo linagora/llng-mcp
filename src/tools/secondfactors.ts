@@ -7,8 +7,11 @@ export function registerSecondFactorTools(server: McpServer, transport: ILlngTra
     try {
       const result = await transport.secondFactorsGet(params.user);
       return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
-    } catch (e: any) {
-      return { content: [{ type: "text", text: `Error: ${e.message}` }], isError: true };
+    } catch (e: unknown) {
+      return {
+        content: [{ type: "text", text: `Error: ${e instanceof Error ? e.message : String(e)}` }],
+        isError: true,
+      };
     }
   });
 
@@ -18,10 +21,17 @@ export function registerSecondFactorTools(server: McpServer, transport: ILlngTra
     { user: z.string(), ids: z.array(z.string()) },
     async (params) => {
       try {
-        const result = await transport.secondFactorsDelete(params.user, params.ids);
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
-      } catch (e: any) {
-        return { content: [{ type: "text", text: `Error: ${e.message}` }], isError: true };
+        await transport.secondFactorsDelete(params.user, params.ids);
+        return {
+          content: [
+            { type: "text", text: `Successfully deleted ${params.ids.length} 2FA device(s)` },
+          ],
+        };
+      } catch (e: unknown) {
+        return {
+          content: [{ type: "text", text: `Error: ${e instanceof Error ? e.message : String(e)}` }],
+          isError: true,
+        };
       }
     },
   );
@@ -32,10 +42,17 @@ export function registerSecondFactorTools(server: McpServer, transport: ILlngTra
     { user: z.string(), type: z.string() },
     async (params) => {
       try {
-        const result = await transport.secondFactorsDelType(params.user, params.type);
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
-      } catch (e: any) {
-        return { content: [{ type: "text", text: `Error: ${e.message}` }], isError: true };
+        await transport.secondFactorsDelType(params.user, params.type);
+        return {
+          content: [
+            { type: "text", text: `Successfully deleted all '${params.type}' 2FA devices` },
+          ],
+        };
+      } catch (e: unknown) {
+        return {
+          content: [{ type: "text", text: `Error: ${e instanceof Error ? e.message : String(e)}` }],
+          isError: true,
+        };
       }
     },
   );

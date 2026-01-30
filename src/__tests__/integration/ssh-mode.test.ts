@@ -90,14 +90,9 @@ describe("SSH Transport Integration (via docker exec)", () => {
     }
   });
 
-  it("should set config value via set command", async () => {
-    if (!available) return;
-
-    // Note: The CLI 'set' command in this version requires interactive confirmation
-    // and may not work non-interactively. This test documents the expected behavior.
-    // In production, use the API or update the entire config via 'save'.
-
-    console.log("CLI set command requires interactive confirmation - skipping");
+  it.skip("should set config value via set command (requires interactive confirmation)", () => {
+    // The CLI 'set' command requires interactive confirmation
+    // and does not work non-interactively.
   });
 
   it("should search sessions via lemonldap-ng-sessions", async () => {

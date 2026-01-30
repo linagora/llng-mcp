@@ -11,8 +11,11 @@ export function registerConsentTools(server: McpServer, transport: ILlngTranspor
       try {
         const result = await transport.consentsGet(params.user);
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
-      } catch (e: any) {
-        return { content: [{ type: "text", text: `Error: ${e.message}` }], isError: true };
+      } catch (e: unknown) {
+        return {
+          content: [{ type: "text", text: `Error: ${e instanceof Error ? e.message : String(e)}` }],
+          isError: true,
+        };
       }
     },
   );
@@ -23,10 +26,15 @@ export function registerConsentTools(server: McpServer, transport: ILlngTranspor
     { user: z.string(), ids: z.array(z.string()) },
     async (params) => {
       try {
-        const result = await transport.consentsDelete(params.user, params.ids);
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
-      } catch (e: any) {
-        return { content: [{ type: "text", text: `Error: ${e.message}` }], isError: true };
+        await transport.consentsDelete(params.user, params.ids);
+        return {
+          content: [{ type: "text", text: `Successfully deleted ${params.ids.length} consent(s)` }],
+        };
+      } catch (e: unknown) {
+        return {
+          content: [{ type: "text", text: `Error: ${e instanceof Error ? e.message : String(e)}` }],
+          isError: true,
+        };
       }
     },
   );

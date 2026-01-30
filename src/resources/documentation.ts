@@ -41,13 +41,14 @@ export function registerDocumentationResource(server: McpServer): void {
             },
           ],
         };
-      } catch (e: any) {
+      } catch (e: unknown) {
+        const errorMessage = e instanceof Error ? e.message : String(e);
         return {
           contents: [
             {
               uri: uri.href,
               mimeType: "text/plain",
-              text: `Error fetching documentation: ${e.message}`,
+              text: `Error fetching documentation: ${errorMessage}`,
             },
           ],
         };

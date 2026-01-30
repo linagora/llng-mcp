@@ -5,8 +5,7 @@ import { registerSessionTools } from "../tools/sessions.js";
 import { registerSecondFactorTools } from "../tools/secondfactors.js";
 import { registerConsentTools } from "../tools/consents.js";
 import { registerOidcTools } from "../tools/oidc.js";
-import { ILlngTransport } from "../transport/interface.js";
-import { OidcConfig } from "../config.js";
+import { TransportRegistry } from "../transport/registry.js";
 
 describe("Tool Registration", () => {
   function createMockServer() {
@@ -19,8 +18,8 @@ describe("Tool Registration", () => {
     return { mockServer, toolNames };
   }
 
-  function createMockTransport(): ILlngTransport {
-    return {
+  function createMockRegistry() {
+    const mockTransport = {
       configInfo: vi
         .fn()
         .mockResolvedValue({ cfgNum: 1, cfgAuthor: "test", cfgDate: "2025-01-30" }),
@@ -44,15 +43,30 @@ describe("Tool Registration", () => {
       secondFactorsDelType: vi.fn().mockResolvedValue(undefined),
       consentsGet: vi.fn().mockResolvedValue([]),
       consentsDelete: vi.fn().mockResolvedValue(undefined),
-    } as unknown as ILlngTransport;
+    };
+
+    const registry = {
+      getTransport: vi.fn().mockReturnValue(mockTransport),
+      getOidcConfig: vi.fn().mockReturnValue({
+        issuer: "https://auth.example.com",
+        clientId: "test-client",
+        redirectUri: "http://localhost:3000/callback",
+        scope: "openid profile",
+      }),
+      listInstances: vi.fn().mockReturnValue([
+        { name: "default", mode: "ssh", isDefault: true },
+      ]),
+    } as unknown as TransportRegistry;
+
+    return { registry, mockTransport };
   }
 
   describe("Config Tools", () => {
     it("should register 10 config tools", () => {
       const { mockServer, toolNames } = createMockServer();
-      const transport = createMockTransport();
+      const { registry } = createMockRegistry();
 
-      registerConfigTools(mockServer, transport);
+      registerConfigTools(mockServer, registry);
 
       expect(toolNames).toHaveLength(10);
       expect(toolNames).toEqual([
@@ -71,12 +85,12 @@ describe("Tool Registration", () => {
 
     it("should handle transport errors with isError flag", async () => {
       const { mockServer } = createMockServer();
-      const transport = createMockTransport();
+      const { registry, mockTransport } = createMockRegistry();
 
       // Override one method to throw
-      transport.configInfo = vi.fn().mockRejectedValue(new Error("Connection failed"));
+      mockTransport.configInfo = vi.fn().mockRejectedValue(new Error("Connection failed"));
 
-      registerConfigTools(mockServer, transport);
+      registerConfigTools(mockServer, registry);
 
       // Get the handler from the mock
       const toolCall = (mockServer.tool as any).mock.calls.find(
@@ -93,7 +107,7 @@ describe("Tool Registration", () => {
 
     it("should successfully call transport methods", async () => {
       const { mockServer } = createMockServer();
-      const transport = createMockTransport();
+      const { registry, mockTransport } = createMockRegistry();
 
       const expectedInfo = {
         cfgNum: 5,
@@ -102,9 +116,9 @@ describe("Tool Registration", () => {
         cfgLog: "Test update",
       };
 
-      transport.configInfo = vi.fn().mockResolvedValue(expectedInfo);
+      mockTransport.configInfo = vi.fn().mockResolvedValue(expectedInfo);
 
-      registerConfigTools(mockServer, transport);
+      registerConfigTools(mockServer, registry);
 
       const toolCall = (mockServer.tool as any).mock.calls.find(
         (call: any) => call[0] === "llng_config_info",
@@ -114,16 +128,16 @@ describe("Tool Registration", () => {
 
       expect(result.isError).toBeUndefined();
       expect(result.content[0].text).toBe(JSON.stringify(expectedInfo, null, 2));
-      expect(transport.configInfo).toHaveBeenCalled();
+      expect(mockTransport.configInfo).toHaveBeenCalled();
     });
   });
 
   describe("Session Tools", () => {
     it("should register 6 session tools", () => {
       const { mockServer, toolNames } = createMockServer();
-      const transport = createMockTransport();
+      const { registry } = createMockRegistry();
 
-      registerSessionTools(mockServer, transport);
+      registerSessionTools(mockServer, registry);
 
       expect(toolNames).toHaveLength(6);
       expect(toolNames).toEqual([
@@ -138,11 +152,11 @@ describe("Tool Registration", () => {
 
     it("should handle transport errors with isError flag", async () => {
       const { mockServer } = createMockServer();
-      const transport = createMockTransport();
+      const { registry, mockTransport } = createMockRegistry();
 
-      transport.sessionGet = vi.fn().mockRejectedValue(new Error("Session not found"));
+      mockTransport.sessionGet = vi.fn().mockRejectedValue(new Error("Session not found"));
 
-      registerSessionTools(mockServer, transport);
+      registerSessionTools(mockServer, registry);
 
       const toolCall = (mockServer.tool as any).mock.calls.find(
         (call: any) => call[0] === "llng_session_get",
@@ -156,12 +170,12 @@ describe("Tool Registration", () => {
 
     it("should pass correct parameters to transport", async () => {
       const { mockServer } = createMockServer();
-      const transport = createMockTransport();
+      const { registry, mockTransport } = createMockRegistry();
 
       const sessionData = { _session_id: "session123", uid: "user1" };
-      transport.sessionGet = vi.fn().mockResolvedValue(sessionData);
+      mockTransport.sessionGet = vi.fn().mockResolvedValue(sessionData);
 
-      registerSessionTools(mockServer, transport);
+      registerSessionTools(mockServer, registry);
 
       const toolCall = (mockServer.tool as any).mock.calls.find(
         (call: any) => call[0] === "llng_session_get",
@@ -169,7 +183,7 @@ describe("Tool Registration", () => {
       const handler = toolCall[3];
       const result = await handler({ id: "session123", backend: "oidc" });
 
-      expect(transport.sessionGet).toHaveBeenCalledWith("session123", "oidc");
+      expect(mockTransport.sessionGet).toHaveBeenCalledWith("session123", "oidc");
       expect(result.content[0].text).toBe(JSON.stringify(sessionData, null, 2));
     });
   });
@@ -177,9 +191,9 @@ describe("Tool Registration", () => {
   describe("2FA Tools", () => {
     it("should register 3 second factor tools", () => {
       const { mockServer, toolNames } = createMockServer();
-      const transport = createMockTransport();
+      const { registry } = createMockRegistry();
 
-      registerSecondFactorTools(mockServer, transport);
+      registerSecondFactorTools(mockServer, registry);
 
       expect(toolNames).toHaveLength(3);
       expect(toolNames).toEqual(["llng_2fa_list", "llng_2fa_delete", "llng_2fa_delType"]);
@@ -187,11 +201,11 @@ describe("Tool Registration", () => {
 
     it("should handle transport errors with isError flag", async () => {
       const { mockServer } = createMockServer();
-      const transport = createMockTransport();
+      const { registry, mockTransport } = createMockRegistry();
 
-      transport.secondFactorsGet = vi.fn().mockRejectedValue(new Error("User not found"));
+      mockTransport.secondFactorsGet = vi.fn().mockRejectedValue(new Error("User not found"));
 
-      registerSecondFactorTools(mockServer, transport);
+      registerSecondFactorTools(mockServer, registry);
 
       const toolCall = (mockServer.tool as any).mock.calls.find(
         (call: any) => call[0] === "llng_2fa_list",
@@ -205,15 +219,15 @@ describe("Tool Registration", () => {
 
     it("should return device list", async () => {
       const { mockServer } = createMockServer();
-      const transport = createMockTransport();
+      const { registry, mockTransport } = createMockRegistry();
 
       const devices = [
         { id: "1", type: "TOTP", name: "Authenticator" },
         { id: "2", type: "U2F", name: "Security Key" },
       ];
-      transport.secondFactorsGet = vi.fn().mockResolvedValue(devices);
+      mockTransport.secondFactorsGet = vi.fn().mockResolvedValue(devices);
 
-      registerSecondFactorTools(mockServer, transport);
+      registerSecondFactorTools(mockServer, registry);
 
       const toolCall = (mockServer.tool as any).mock.calls.find(
         (call: any) => call[0] === "llng_2fa_list",
@@ -228,9 +242,9 @@ describe("Tool Registration", () => {
   describe("Consent Tools", () => {
     it("should register 2 consent tools", () => {
       const { mockServer, toolNames } = createMockServer();
-      const transport = createMockTransport();
+      const { registry } = createMockRegistry();
 
-      registerConsentTools(mockServer, transport);
+      registerConsentTools(mockServer, registry);
 
       expect(toolNames).toHaveLength(2);
       expect(toolNames).toEqual(["llng_consent_list", "llng_consent_delete"]);
@@ -238,11 +252,11 @@ describe("Tool Registration", () => {
 
     it("should handle transport errors with isError flag", async () => {
       const { mockServer } = createMockServer();
-      const transport = createMockTransport();
+      const { registry, mockTransport } = createMockRegistry();
 
-      transport.consentsGet = vi.fn().mockRejectedValue(new Error("Database error"));
+      mockTransport.consentsGet = vi.fn().mockRejectedValue(new Error("Database error"));
 
-      registerConsentTools(mockServer, transport);
+      registerConsentTools(mockServer, registry);
 
       const toolCall = (mockServer.tool as any).mock.calls.find(
         (call: any) => call[0] === "llng_consent_list",
@@ -256,15 +270,15 @@ describe("Tool Registration", () => {
 
     it("should return consent list", async () => {
       const { mockServer } = createMockServer();
-      const transport = createMockTransport();
+      const { registry, mockTransport } = createMockRegistry();
 
       const consents = [
         { id: "1", rp: "app1.example.com", scope: "openid profile" },
         { id: "2", rp: "app2.example.com", scope: "openid email" },
       ];
-      transport.consentsGet = vi.fn().mockResolvedValue(consents);
+      mockTransport.consentsGet = vi.fn().mockResolvedValue(consents);
 
-      registerConsentTools(mockServer, transport);
+      registerConsentTools(mockServer, registry);
 
       const toolCall = (mockServer.tool as any).mock.calls.find(
         (call: any) => call[0] === "llng_consent_list",
@@ -279,14 +293,9 @@ describe("Tool Registration", () => {
   describe("OIDC Tools", () => {
     it("should register 8 OIDC tools", () => {
       const { mockServer, toolNames } = createMockServer();
-      const config: OidcConfig = {
-        issuer: "https://auth.example.com",
-        clientId: "test-client",
-        redirectUri: "http://localhost:3000/callback",
-        scope: "openid profile",
-      };
+      const { registry } = createMockRegistry();
 
-      registerOidcTools(mockServer, config);
+      registerOidcTools(mockServer, registry);
 
       expect(toolNames).toHaveLength(8);
       expect(toolNames).toEqual([
@@ -303,8 +312,10 @@ describe("Tool Registration", () => {
 
     it("should handle undefined config with error", async () => {
       const { mockServer } = createMockServer();
+      const { registry } = createMockRegistry();
+      (registry.getOidcConfig as any).mockReturnValue(undefined);
 
-      registerOidcTools(mockServer, undefined);
+      registerOidcTools(mockServer, registry);
 
       const toolCall = (mockServer.tool as any).mock.calls.find(
         (call: any) => call[0] === "llng_oidc_metadata",
@@ -320,12 +331,12 @@ describe("Tool Registration", () => {
   describe("Error Handling", () => {
     it("should wrap non-Error objects in error responses", async () => {
       const { mockServer } = createMockServer();
-      const transport = createMockTransport();
+      const { registry, mockTransport } = createMockRegistry();
 
       // Reject with a string instead of Error object
-      transport.configInfo = vi.fn().mockRejectedValue("Something went wrong");
+      mockTransport.configInfo = vi.fn().mockRejectedValue("Something went wrong");
 
-      registerConfigTools(mockServer, transport);
+      registerConfigTools(mockServer, registry);
 
       const toolCall = (mockServer.tool as any).mock.calls.find(
         (call: any) => call[0] === "llng_config_info",
@@ -339,13 +350,13 @@ describe("Tool Registration", () => {
 
     it("should handle multiple tool errors independently", async () => {
       const { mockServer } = createMockServer();
-      const transport = createMockTransport();
+      const { registry, mockTransport } = createMockRegistry();
 
-      transport.configInfo = vi.fn().mockRejectedValue(new Error("Config error"));
-      transport.sessionGet = vi.fn().mockRejectedValue(new Error("Session error"));
+      mockTransport.configInfo = vi.fn().mockRejectedValue(new Error("Config error"));
+      mockTransport.sessionGet = vi.fn().mockRejectedValue(new Error("Session error"));
 
-      registerConfigTools(mockServer, transport);
-      registerSessionTools(mockServer, transport);
+      registerConfigTools(mockServer, registry);
+      registerSessionTools(mockServer, registry);
 
       const configToolCall = (mockServer.tool as any).mock.calls.find(
         (call: any) => call[0] === "llng_config_info",
@@ -368,9 +379,9 @@ describe("Tool Registration", () => {
   describe("Success Responses", () => {
     it("should return success messages for void operations", async () => {
       const { mockServer } = createMockServer();
-      const transport = createMockTransport();
+      const { registry } = createMockRegistry();
 
-      registerConfigTools(mockServer, transport);
+      registerConfigTools(mockServer, registry);
 
       const toolCall = (mockServer.tool as any).mock.calls.find(
         (call: any) => call[0] === "llng_config_set",
@@ -384,9 +395,9 @@ describe("Tool Registration", () => {
 
     it("should include IDs in success messages", async () => {
       const { mockServer } = createMockServer();
-      const transport = createMockTransport();
+      const { registry } = createMockRegistry();
 
-      registerSessionTools(mockServer, transport);
+      registerSessionTools(mockServer, registry);
 
       const toolCall = (mockServer.tool as any).mock.calls.find(
         (call: any) => call[0] === "llng_session_delete",
@@ -402,9 +413,9 @@ describe("Tool Registration", () => {
   describe("Parameter Handling", () => {
     it("should pass optional parameters correctly", async () => {
       const { mockServer } = createMockServer();
-      const transport = createMockTransport();
+      const { registry, mockTransport } = createMockRegistry();
 
-      registerConfigTools(mockServer, transport);
+      registerConfigTools(mockServer, registry);
 
       const toolCall = (mockServer.tool as any).mock.calls.find(
         (call: any) => call[0] === "llng_config_set",
@@ -413,14 +424,14 @@ describe("Tool Registration", () => {
 
       await handler({ keys: { domain: "example.com" }, log: "Updated domain" });
 
-      expect(transport.configSet).toHaveBeenCalledWith({ domain: "example.com" }, "Updated domain");
+      expect(mockTransport.configSet).toHaveBeenCalledWith({ domain: "example.com" }, "Updated domain");
     });
 
     it("should handle array parameters", async () => {
       const { mockServer } = createMockServer();
-      const transport = createMockTransport();
+      const { registry, mockTransport } = createMockRegistry();
 
-      registerSessionTools(mockServer, transport);
+      registerSessionTools(mockServer, registry);
 
       const toolCall = (mockServer.tool as any).mock.calls.find(
         (call: any) => call[0] === "llng_session_delete",
@@ -429,14 +440,14 @@ describe("Tool Registration", () => {
 
       await handler({ ids: ["id1", "id2"], backend: "oidc" });
 
-      expect(transport.sessionDelete).toHaveBeenCalledWith(["id1", "id2"], "oidc");
+      expect(mockTransport.sessionDelete).toHaveBeenCalledWith(["id1", "id2"], "oidc");
     });
 
     it("should handle complex filter objects", async () => {
       const { mockServer } = createMockServer();
-      const transport = createMockTransport();
+      const { registry, mockTransport } = createMockRegistry();
 
-      registerSessionTools(mockServer, transport);
+      registerSessionTools(mockServer, registry);
 
       const toolCall = (mockServer.tool as any).mock.calls.find(
         (call: any) => call[0] === "llng_session_search",
@@ -452,7 +463,7 @@ describe("Tool Registration", () => {
 
       await handler(filter);
 
-      expect(transport.sessionSearch).toHaveBeenCalledWith(filter);
+      expect(mockTransport.sessionSearch).toHaveBeenCalledWith(filter);
     });
   });
 });

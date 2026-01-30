@@ -1,11 +1,19 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { ILlngTransport } from "../transport/interface.js";
+import { TransportRegistry } from "../transport/registry.js";
 
-export function registerSecondFactorTools(server: McpServer, transport: ILlngTransport): void {
-  server.tool("llng_2fa_list", "List user's 2FA devices", { user: z.string() }, async (params) => {
-    try {
-      const result = await transport.secondFactorsGet(params.user);
+export function registerSecondFactorTools(server: McpServer, registry: TransportRegistry): void {
+  server.tool(
+    "llng_2fa_list",
+    "List user's 2FA devices",
+    {
+      user: z.string(),
+      instance: z.string().optional().describe("LLNG instance name (uses default if omitted)"),
+    },
+    async (params) => {
+      try {
+        const transport = registry.getTransport(params.instance);
+        const result = await transport.secondFactorsGet(params.user);
       return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
     } catch (e: unknown) {
       return {
@@ -18,9 +26,14 @@ export function registerSecondFactorTools(server: McpServer, transport: ILlngTra
   server.tool(
     "llng_2fa_delete",
     "Delete specific 2FA device(s)",
-    { user: z.string(), ids: z.array(z.string()) },
+    {
+      user: z.string(),
+      ids: z.array(z.string()),
+      instance: z.string().optional().describe("LLNG instance name (uses default if omitted)"),
+    },
     async (params) => {
       try {
+        const transport = registry.getTransport(params.instance);
         await transport.secondFactorsDelete(params.user, params.ids);
         return {
           content: [
@@ -39,9 +52,14 @@ export function registerSecondFactorTools(server: McpServer, transport: ILlngTra
   server.tool(
     "llng_2fa_delType",
     "Delete all 2FA devices of a given type",
-    { user: z.string(), type: z.string() },
+    {
+      user: z.string(),
+      type: z.string(),
+      instance: z.string().optional().describe("LLNG instance name (uses default if omitted)"),
+    },
     async (params) => {
       try {
+        const transport = registry.getTransport(params.instance);
         await transport.secondFactorsDelType(params.user, params.type);
         return {
           content: [

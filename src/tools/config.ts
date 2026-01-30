@@ -1,18 +1,21 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { ILlngTransport } from "../transport/interface.js";
+import { TransportRegistry } from "../transport/registry.js";
 
 /**
  * Register LLNG configuration management tools
  */
-export function registerConfigTools(server: McpServer, transport: ILlngTransport): void {
+export function registerConfigTools(server: McpServer, registry: TransportRegistry): void {
   // 1. llng_config_info - Get current LLNG config metadata
   server.tool(
     "llng_config_info",
     "Get current LLNG config metadata (number, author, date)",
-    {},
-    async () => {
+    {
+      instance: z.string().optional().describe("LLNG instance name (uses default if omitted)"),
+    },
+    async (args) => {
       try {
+        const transport = registry.getTransport(args.instance);
         const result = await transport.configInfo();
         return {
           content: [
@@ -42,9 +45,11 @@ export function registerConfigTools(server: McpServer, transport: ILlngTransport
     "Get LLNG config value(s) by key",
     {
       keys: z.array(z.string()).describe("Array of config keys to retrieve"),
+      instance: z.string().optional().describe("LLNG instance name (uses default if omitted)"),
     },
     async (args) => {
       try {
+        const transport = registry.getTransport(args.instance);
         const result = await transport.configGet(args.keys);
         return {
           content: [
@@ -75,9 +80,11 @@ export function registerConfigTools(server: McpServer, transport: ILlngTransport
     {
       keys: z.record(z.string(), z.any()).describe("Key-value pairs to set in config"),
       log: z.string().optional().describe("Optional log message for this change"),
+      instance: z.string().optional().describe("LLNG instance name (uses default if omitted)"),
     },
     async (args) => {
       try {
+        const transport = registry.getTransport(args.instance);
         await transport.configSet(args.keys, args.log);
         return {
           content: [
@@ -109,9 +116,11 @@ export function registerConfigTools(server: McpServer, transport: ILlngTransport
       key: z.string().describe("The composite config key"),
       subkey: z.string().describe("The subkey to add"),
       value: z.string().describe("The value for the subkey"),
+      instance: z.string().optional().describe("LLNG instance name (uses default if omitted)"),
     },
     async (args) => {
       try {
+        const transport = registry.getTransport(args.instance);
         await transport.configAddKey(args.key, args.subkey, args.value);
         return {
           content: [
@@ -142,9 +151,11 @@ export function registerConfigTools(server: McpServer, transport: ILlngTransport
     {
       key: z.string().describe("The composite config key"),
       subkey: z.string().describe("The subkey to delete"),
+      instance: z.string().optional().describe("LLNG instance name (uses default if omitted)"),
     },
     async (args) => {
       try {
+        const transport = registry.getTransport(args.instance);
         await transport.configDelKey(args.key, args.subkey);
         return {
           content: [
@@ -169,9 +180,16 @@ export function registerConfigTools(server: McpServer, transport: ILlngTransport
   );
 
   // 6. llng_config_export - Export full LLNG config as JSON
-  server.tool("llng_config_export", "Export full LLNG config as JSON", {}, async () => {
-    try {
-      const result = await transport.configSave();
+  server.tool(
+    "llng_config_export",
+    "Export full LLNG config as JSON",
+    {
+      instance: z.string().optional().describe("LLNG instance name (uses default if omitted)"),
+    },
+    async (args) => {
+      try {
+        const transport = registry.getTransport(args.instance);
+        const result = await transport.configSave();
       return {
         content: [
           {
@@ -199,9 +217,11 @@ export function registerConfigTools(server: McpServer, transport: ILlngTransport
     "Import LLNG config from JSON",
     {
       json: z.string().describe("JSON string of the config to import"),
+      instance: z.string().optional().describe("LLNG instance name (uses default if omitted)"),
     },
     async (args) => {
       try {
+        const transport = registry.getTransport(args.instance);
         await transport.configRestore(args.json);
         return {
           content: [
@@ -231,9 +251,11 @@ export function registerConfigTools(server: McpServer, transport: ILlngTransport
     "Merge JSON snippet into LLNG config",
     {
       json: z.string().describe("JSON string to merge into config"),
+      instance: z.string().optional().describe("LLNG instance name (uses default if omitted)"),
     },
     async (args) => {
       try {
+        const transport = registry.getTransport(args.instance);
         await transport.configMerge(args.json);
         return {
           content: [
@@ -258,9 +280,16 @@ export function registerConfigTools(server: McpServer, transport: ILlngTransport
   );
 
   // 9. llng_config_rollback - Rollback LLNG config to previous version
-  server.tool("llng_config_rollback", "Rollback LLNG config to previous version", {}, async () => {
-    try {
-      await transport.configRollback();
+  server.tool(
+    "llng_config_rollback",
+    "Rollback LLNG config to previous version",
+    {
+      instance: z.string().optional().describe("LLNG instance name (uses default if omitted)"),
+    },
+    async (args) => {
+      try {
+        const transport = registry.getTransport(args.instance);
+        await transport.configRollback();
       return {
         content: [
           {
@@ -283,9 +312,16 @@ export function registerConfigTools(server: McpServer, transport: ILlngTransport
   });
 
   // 10. llng_config_update_cache - Force LLNG config cache update
-  server.tool("llng_config_update_cache", "Force LLNG config cache update", {}, async () => {
-    try {
-      await transport.configUpdateCache();
+  server.tool(
+    "llng_config_update_cache",
+    "Force LLNG config cache update",
+    {
+      instance: z.string().optional().describe("LLNG instance name (uses default if omitted)"),
+    },
+    async (args) => {
+      try {
+        const transport = registry.getTransport(args.instance);
+        await transport.configUpdateCache();
       return {
         content: [
           {

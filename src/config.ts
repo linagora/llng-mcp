@@ -3,6 +3,17 @@ import { join } from "path";
 import { homedir } from "os";
 
 const DEFAULT_BIN_PREFIX = "/usr/share/lemonldap-ng/bin";
+const VALID_MODES = ["ssh", "api", "k8s"] as const;
+type LlngMode = (typeof VALID_MODES)[number];
+
+function parseMode(value: string): LlngMode {
+  if (VALID_MODES.includes(value as LlngMode)) {
+    return value as LlngMode;
+  }
+  throw new Error(
+    `Invalid LLNG mode '${value}'. Valid modes: ${VALID_MODES.join(", ")}`,
+  );
+}
 
 export interface SshConfig {
   host?: string;
@@ -33,15 +44,15 @@ export interface OidcConfig {
 
 export interface K8sConfig {
   context?: string;
-  namespace: string;
-  deployment: string;
+  namespace?: string;
+  deployment?: string;
   container?: string;
   podSelector?: string;
   binPrefix?: string;
 }
 
 export interface LlngConfig {
-  mode: "ssh" | "api" | "k8s";
+  mode: LlngMode;
   ssh?: SshConfig;
   api?: ApiConfig;
   k8s?: K8sConfig;
@@ -94,7 +105,7 @@ export function loadConfig(): LlngConfig {
     const fileConfig = JSON.parse(fileContent);
 
     // Merge file config with defaults
-    if (fileConfig.mode) config.mode = fileConfig.mode;
+    if (fileConfig.mode) config.mode = parseMode(fileConfig.mode);
     if (fileConfig.ssh) {
       config.ssh = { ...config.ssh, ...fileConfig.ssh };
     }
@@ -113,7 +124,7 @@ export function loadConfig(): LlngConfig {
 
   // Overlay environment variables
   if (process.env.LLNG_MODE) {
-    config.mode = process.env.LLNG_MODE as "ssh" | "api" | "k8s";
+    config.mode = parseMode(process.env.LLNG_MODE);
   }
 
   // SSH config - helper to ensure ssh config exists
@@ -175,7 +186,7 @@ export function loadConfig(): LlngConfig {
   // K8s config
   const ensureK8sConfig = () => {
     if (!config.k8s) {
-      config.k8s = { namespace: "", deployment: "" };
+      config.k8s = {};
     }
     return config.k8s;
   };
@@ -234,7 +245,7 @@ export interface LlngMultiConfig {
 
 function applyInstanceDefaults(partial: Partial<LlngConfig>): LlngConfig {
   const config: LlngConfig = {
-    mode: partial.mode || "ssh",
+    mode: partial.mode ? parseMode(partial.mode) : "ssh",
   };
   if (partial.ssh) config.ssh = { ...partial.ssh };
   if (partial.api) config.api = partial.api;
@@ -245,13 +256,17 @@ function applyInstanceDefaults(partial: Partial<LlngConfig>): LlngConfig {
   if (config.mode === "ssh" && !config.ssh) {
     config.ssh = {};
   }
+  // For k8s mode without explicit k8s config, provide empty object
+  if (config.mode === "k8s" && !config.k8s) {
+    config.k8s = {};
+  }
 
   return config;
 }
 
 function applyEnvOverrides(config: LlngConfig): void {
   if (process.env.LLNG_MODE) {
-    config.mode = process.env.LLNG_MODE as "ssh" | "api" | "k8s";
+    config.mode = parseMode(process.env.LLNG_MODE);
   }
 
   const ensureSsh = () => {
@@ -295,7 +310,7 @@ function applyEnvOverrides(config: LlngConfig): void {
   // K8s env overrides
   const ensureK8s = () => {
     if (!config.k8s) {
-      config.k8s = { namespace: "", deployment: "" };
+      config.k8s = {};
     }
     return config.k8s;
   };

@@ -15,13 +15,19 @@ export class K8sTransport implements ILlngTransport {
       return this.cachedPodName;
     }
 
+    if (!this.config.namespace) {
+      throw new Error("K8s namespace is required but not configured");
+    }
+    if (!this.config.deployment && !this.config.podSelector) {
+      throw new Error("K8s deployment or podSelector is required but not configured");
+    }
     const selector = this.config.podSelector || `app.kubernetes.io/name=${this.config.deployment}`;
     const args = ["get", "pods", "-l", selector, "-o", "jsonpath={.items[0].metadata.name}"];
 
     if (this.config.context) {
       args.unshift("--context", this.config.context);
     }
-    args.unshift("-n", this.config.namespace);
+    args.unshift("-n", this.config.namespace!);
 
     const podName = await this.kubectl(args);
     if (!podName || podName === "{}" || podName.trim() === "") {
@@ -97,7 +103,7 @@ export class K8sTransport implements ILlngTransport {
     if (this.config.context) {
       args.push("--context", this.config.context);
     }
-    args.push("-n", this.config.namespace);
+    args.push("-n", this.config.namespace!);
     args.push("exec", podName);
 
     if (this.config.container) {
@@ -114,7 +120,7 @@ export class K8sTransport implements ILlngTransport {
     if (this.config.context) {
       args.push("--context", this.config.context);
     }
-    args.push("-n", this.config.namespace);
+    args.push("-n", this.config.namespace!);
     args.push("exec", "-i", podName);
 
     if (this.config.container) {

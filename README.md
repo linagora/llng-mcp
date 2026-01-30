@@ -1,85 +1,79 @@
 # llng-mcp
 
-MCP Server for Lemonldap-NG
+MCP Server for [Lemonldap-NG](https://lemonldap-ng.org/)
 
-A Model Context Protocol (MCP) server that enables AI assistants to manage and monitor Lemonldap-NG web SSO instances. Supports both local SSH/CLI mode and remote REST API mode for comprehensive access control and session management.
+Manage your Lemonldap-NG web SSO instances from Claude, Cursor, or any MCP-compatible AI assistant. 43 tools covering configuration, sessions, OIDC, SAML, 2FA, and more.
 
-## Overview
+## Quick Start
 
-llng-mcp bridges AI assistants with Lemonldap-NG, a powerful web SSO (Single Sign-On) system. Through 43 tools and 1 resource, it provides AI-native access to configuration management, session control, multi-factor authentication, OIDC testing, and user consent tracking.
+### 1. Add to Claude Code
 
-## Features
+```bash
+claude mcp add llng-mcp -- npx llng-mcp
+```
 
-### Configuration Tools (11 tools)
+Or add to Claude Desktop (`~/.claude/desktop_config.json`):
 
-- **llng_config_info** - Retrieve current configuration metadata (number, author, date, log)
-- **llng_config_get** - Fetch configuration values by key
-- **llng_config_set** - Update configuration values with optional change log
-- **llng_config_addKey** - Add subkeys to composite configuration parameters
-- **llng_config_delKey** - Remove subkeys from composite configuration parameters
-- **llng_config_export** - Export entire configuration as JSON
-- **llng_config_import** - Replace configuration from JSON backup
-- **llng_config_merge** - Merge JSON snippet into current configuration
-- **llng_config_rollback** - Revert to previous configuration version
-- **llng_config_update_cache** - Force cache refresh on LLNG nodes
-- **llng_config_test_email** - Send a test email to verify SMTP settings
+```json
+{
+  "mcpServers": {
+    "llng": {
+      "command": "npx",
+      "args": ["llng-mcp"]
+    }
+  }
+}
+```
 
-### Session Management Tools (6 tools)
+### 2. Configure your SSO instances
 
-- **llng_session_get** - Retrieve session data by ID (supports `backend`, `persistent`, `hash`, `refreshTokens` options)
-- **llng_session_search** - Search sessions with filters (supports `where`, `select`, `backend`, `count`, `kind`, `persistent`, `hash`, `idOnly`, `refreshTokens`)
-- **llng_session_delete** - Terminate user sessions (supports `where` filter for bulk deletion, `kind`, `backend`, `persistent`, `hash`, `refreshTokens`)
-- **llng_session_setKey** - Modify session attributes (supports `backend`, `persistent`, `hash`, `refreshTokens` options)
-- **llng_session_delKey** - Remove session attributes (supports `backend`, `persistent`, `hash`, `refreshTokens` options)
-- **llng_session_backup** - Export all sessions as JSON backup (supports `backend`, `persistent`, `refreshTokens` options)
+Create `~/.llng-mcp.json`:
 
-### Two-Factor Authentication Tools (3 tools)
+```json
+{
+  "instances": {
+    "prod": {
+      "mode": "ssh",
+      "ssh": { "host": "sso.example.com", "user": "root" }
+    },
+    "staging": {
+      "mode": "ssh",
+      "ssh": { "host": "sso-staging.example.com", "user": "root" }
+    }
+  },
+  "default": "prod"
+}
+```
 
-- **llng_2fa_list** - List user's registered 2FA devices
-- **llng_2fa_delete** - Remove specific 2FA devices
-- **llng_2fa_delType** - Remove all devices of a given type (TOTP, U2F, etc.)
+All tools accept an optional `instance` parameter to target a specific instance. See [Configuration](#configuration) below for SSH, API, Kubernetes, and Docker modes.
 
-### User Consent Tools (2 tools)
+### 3. Start using
 
-- **llng_consent_list** - List user's OIDC provider consents
-- **llng_consent_delete** - Revoke OIDC provider consents
+Just ask Claude in natural language:
 
-### OIDC Relying Party Management Tools (5 tools)
+- _"Show me the current SSO configuration"_
+- _"How many active sessions are there?"_
+- _"List all OIDC relying parties"_
+- _"Add a new OIDC RP for my-app with redirect URI https://my-app.example.com/callback"_
+- _"Delete all sessions for user jdoe"_
+- _"What 2FA devices does user alice have?"_
+- _"Rotate the OIDC signing keys"_
+- _"Export the full configuration as backup"_
 
-- **llng_oidc_issuer_enable** - Enable OIDC issuer (activate issuerDBOpenIDConnectActivation and generate signing keys)
-- **llng_oidc_rp_list** - List configured OIDC Relying Parties with clientID and displayName
-- **llng_oidc_rp_get** - Get full details of an OIDC RP by confKey
-- **llng_oidc_rp_add** - Add a new OIDC Relying Party (clientId, redirectUris, exportedVars, etc.)
-- **llng_oidc_rp_delete** - Delete an OIDC Relying Party by confKey
+## What You Can Do
 
-### CLI Utility Tools (7 tools)
-
-- **llng_download_saml_metadata** - Download SAML metadata from a remote IdP
-- **llng_import_metadata** - Import a SAML federation into LLNG config
-- **llng_delete_session** - Delete user sessions by UID pattern
-- **llng_user_attributes** - Look up user attributes
-- **llng_purge_central_cache** - Purge expired sessions from central cache
-- **llng_purge_local_cache** - Purge local handler cache
-- **llng_rotate_oidc_keys** - Rotate OIDC signing keys
-
-### OIDC Testing Tools (8 tools)
-
-- **llng_oidc_metadata** - Fetch OIDC provider discovery metadata
-- **llng_oidc_authorize** - Generate authorization URL with PKCE flow
-- **llng_oidc_tokens** - Exchange authorization code for access/refresh tokens
-- **llng_oidc_userinfo** - Retrieve authenticated user information
-- **llng_oidc_introspect** - Validate and inspect access tokens
-- **llng_oidc_refresh** - Refresh expired access tokens
-- **llng_oidc_whoami** - Decode ID token to display user identity
-- **llng_oidc_check_auth** - Test authentication status of protected resources
-
-### Documentation Resource (1 resource)
-
-- **llng-documentation** - Fetch live documentation pages from lemonldap-ng.org
-
-### Instance Discovery (1 tool)
-
-- **llng_instances** - List available LLNG instances and their transport mode
+| Capability               | Description                                                                                            |
+| ------------------------ | ------------------------------------------------------------------------------------------------------ |
+| **Configuration**        | Read, update, export, import, merge, and rollback SSO configuration. Test email settings.              |
+| **Sessions**             | Search, inspect, modify, and delete user sessions. Backup all sessions. Manage offline/refresh tokens. |
+| **OIDC Relying Parties** | Enable the OIDC issuer, list/add/update/delete relying parties with sensible defaults.                 |
+| **OIDC Testing**         | Full OIDC flow testing: discovery, authorization with PKCE, token exchange, userinfo, introspection.   |
+| **SAML Federation**      | Download IdP metadata, import SAML federations.                                                        |
+| **Two-Factor Auth**      | List and manage users' 2FA devices (TOTP, U2F, WebAuthn).                                              |
+| **User Consents**        | List and revoke OIDC consents per user.                                                                |
+| **User Directory**       | Look up user attributes from the configured backend.                                                   |
+| **Cache & Maintenance**  | Purge central and local caches, rotate OIDC keys, delete sessions by UID pattern.                      |
+| **Multi-Instance**       | Manage multiple SSO instances (prod, staging, dev) from a single server.                               |
 
 ## Installation
 

@@ -30,6 +30,10 @@ describe("API Transport Integration", () => {
       }
 
       const token = tokenMatch[1];
+      if (!token) {
+        console.log("CSRF token is empty");
+        return null;
+      }
 
       // Authenticate to portal as dwho/dwho (default demo user)
       const resp = await fetch(`${BASE_URL}/`, {
@@ -62,8 +66,8 @@ describe("API Transport Integration", () => {
       }
 
       return match[1];
-    } catch (e: any) {
-      console.log("Authentication error:", e.message);
+    } catch (e: unknown) {
+      console.log("Authentication error:", e instanceof Error ? e.message : String(e));
       return null;
     }
   }
@@ -117,8 +121,8 @@ describe("API Transport Integration", () => {
 
       // Should contain login form
       expect(html).toContain("lemonldap-ng");
-    } catch (e: any) {
-      console.log("Portal access failed:", e.message);
+    } catch (e: unknown) {
+      console.log("Portal access failed:", e instanceof Error ? e.message : String(e));
       throw e;
     }
   });
@@ -166,8 +170,8 @@ describe("API Transport Integration", () => {
       // Should have basic config keys
       expect(config.portal).toBeDefined();
       expect(config.domain).toBeDefined();
-    } catch (e: any) {
-      console.log("Manager API access failed:", e.message);
+    } catch (e: unknown) {
+      console.log("Manager API access failed:", e instanceof Error ? e.message : String(e));
       throw e;
     }
   });
@@ -201,8 +205,8 @@ describe("API Transport Integration", () => {
 
       const data = await resp.json();
       expect(Array.isArray(data) || typeof data === "object").toBe(true);
-    } catch (e: any) {
-      console.log("REST API access failed:", e.message);
+    } catch (e: unknown) {
+      console.log("REST API access failed:", e instanceof Error ? e.message : String(e));
       // Don't fail - REST API might not be enabled
     }
   });

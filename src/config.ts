@@ -10,6 +10,7 @@ export interface SshConfig {
   cliPath: string;
   sessionsPath: string;
   configEditorPath: string;
+  deleteSessionPath?: string;
 }
 
 export interface ApiConfig {
@@ -82,34 +83,41 @@ export function loadConfig(): LlngConfig {
     config.mode = process.env.LLNG_MODE as "ssh" | "api";
   }
 
-  // SSH config
+  // SSH config - helper to ensure ssh config exists with defaults
+  const ensureSshConfig = () => {
+    if (!config.ssh) {
+      config.ssh = {
+        cliPath: "/usr/share/lemonldap-ng/bin/lemonldap-ng-cli",
+        sessionsPath: "/usr/share/lemonldap-ng/bin/lemonldap-ng-sessions",
+        configEditorPath: "/usr/share/lemonldap-ng/bin/lmConfigEditor",
+      };
+    }
+    return config.ssh;
+  };
+
   if (process.env.LLNG_SSH_HOST) {
-    config.ssh = config.ssh || { cliPath: "", sessionsPath: "", configEditorPath: "" };
-    config.ssh.host = process.env.LLNG_SSH_HOST;
+    ensureSshConfig().host = process.env.LLNG_SSH_HOST;
   }
   if (process.env.LLNG_SSH_USER) {
-    config.ssh = config.ssh || { cliPath: "", sessionsPath: "", configEditorPath: "" };
-    config.ssh.user = process.env.LLNG_SSH_USER;
+    ensureSshConfig().user = process.env.LLNG_SSH_USER;
   }
   if (process.env.LLNG_SSH_PORT) {
-    config.ssh = config.ssh || { cliPath: "", sessionsPath: "", configEditorPath: "" };
-    config.ssh.port = parseInt(process.env.LLNG_SSH_PORT, 10);
+    ensureSshConfig().port = parseInt(process.env.LLNG_SSH_PORT, 10);
   }
   if (process.env.LLNG_SSH_SUDO) {
-    config.ssh = config.ssh || { cliPath: "", sessionsPath: "", configEditorPath: "" };
-    config.ssh.sudo = process.env.LLNG_SSH_SUDO;
+    ensureSshConfig().sudo = process.env.LLNG_SSH_SUDO;
   }
   if (process.env.LLNG_SSH_CLI_PATH) {
-    config.ssh = config.ssh || { cliPath: "", sessionsPath: "", configEditorPath: "" };
-    config.ssh.cliPath = process.env.LLNG_SSH_CLI_PATH;
+    ensureSshConfig().cliPath = process.env.LLNG_SSH_CLI_PATH;
   }
   if (process.env.LLNG_SSH_SESSIONS_PATH) {
-    config.ssh = config.ssh || { cliPath: "", sessionsPath: "", configEditorPath: "" };
-    config.ssh.sessionsPath = process.env.LLNG_SSH_SESSIONS_PATH;
+    ensureSshConfig().sessionsPath = process.env.LLNG_SSH_SESSIONS_PATH;
   }
   if (process.env.LLNG_SSH_CONFIG_EDITOR_PATH) {
-    config.ssh = config.ssh || { cliPath: "", sessionsPath: "", configEditorPath: "" };
-    config.ssh.configEditorPath = process.env.LLNG_SSH_CONFIG_EDITOR_PATH;
+    ensureSshConfig().configEditorPath = process.env.LLNG_SSH_CONFIG_EDITOR_PATH;
+  }
+  if (process.env.LLNG_SSH_DELETE_SESSION_PATH) {
+    ensureSshConfig().deleteSessionPath = process.env.LLNG_SSH_DELETE_SESSION_PATH;
   }
 
   // API config

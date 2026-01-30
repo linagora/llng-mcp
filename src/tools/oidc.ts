@@ -3,17 +3,14 @@ import { z } from "zod";
 import { randomBytes, createHash } from "crypto";
 import { OidcConfig } from "../config.js";
 
-// Cache for OIDC discovery document with TTL
-let discoveryCache: { issuer: string; metadata: any; fetchedAt: number } | null = null;
+// Cache for OIDC discovery documents, keyed by issuer with TTL
+const discoveryCache = new Map<string, { metadata: any; fetchedAt: number }>();
 const DISCOVERY_CACHE_TTL_MS = 3600_000; // 1 hour
 
 async function getDiscoveryMetadata(config: OidcConfig): Promise<any> {
-  if (
-    discoveryCache &&
-    discoveryCache.issuer === config.issuer &&
-    Date.now() - discoveryCache.fetchedAt < DISCOVERY_CACHE_TTL_MS
-  ) {
-    return discoveryCache.metadata;
+  const cached = discoveryCache.get(config.issuer);
+  if (cached && Date.now() - cached.fetchedAt < DISCOVERY_CACHE_TTL_MS) {
+    return cached.metadata;
   }
 
   const url = `${config.issuer}/.well-known/openid-configuration`;
@@ -26,7 +23,7 @@ async function getDiscoveryMetadata(config: OidcConfig): Promise<any> {
   }
 
   const metadata = await response.json();
-  discoveryCache = { issuer: config.issuer, metadata, fetchedAt: Date.now() };
+  discoveryCache.set(config.issuer, { metadata, fetchedAt: Date.now() });
   return metadata;
 }
 

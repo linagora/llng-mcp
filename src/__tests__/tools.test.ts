@@ -21,7 +21,9 @@ describe("Tool Registration", () => {
 
   function createMockTransport(): ILlngTransport {
     return {
-      configInfo: vi.fn().mockResolvedValue({ cfgNum: 1, cfgAuthor: "test", cfgDate: 123456 }),
+      configInfo: vi
+        .fn()
+        .mockResolvedValue({ cfgNum: 1, cfgAuthor: "test", cfgDate: "2025-01-30" }),
       configGet: vi.fn().mockResolvedValue({}),
       configSet: vi.fn().mockResolvedValue(undefined),
       configAddKey: vi.fn().mockResolvedValue(undefined),

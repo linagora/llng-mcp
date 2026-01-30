@@ -8,7 +8,7 @@ describe("SSH Transport Integration (via docker exec)", () => {
   function dockerExec(cmd: string): string {
     return execSync(`docker exec ${containerName} ${cmd}`, {
       encoding: "utf-8",
-      stdio: ["pipe", "pipe", "pipe"], // separate stderr from stdout
+      stdio: ["pipe", "pipe", "ignore"], // capture stdout, ignore stderr
     }).trim();
   }
 
@@ -46,8 +46,8 @@ describe("SSH Transport Integration (via docker exec)", () => {
       expect(output).toContain("Num");
       expect(output).toContain("Author");
       expect(output).toMatch(/Num\s+:\s+\d+/);
-    } catch (e: any) {
-      console.log("CLI info failed:", e.message);
+    } catch (e: unknown) {
+      console.log("CLI info failed:", e instanceof Error ? e.message : String(e));
       throw e;
     }
   });
@@ -65,8 +65,8 @@ describe("SSH Transport Integration (via docker exec)", () => {
       // Should contain portal and domain values
       expect(output).toMatch(/portal\s+=\s+\S+/);
       expect(output).toMatch(/domain\s+=\s+\S+/);
-    } catch (e: any) {
-      console.log("CLI get failed:", e.message);
+    } catch (e: unknown) {
+      console.log("CLI get failed:", e instanceof Error ? e.message : String(e));
       throw e;
     }
   });
@@ -84,8 +84,8 @@ describe("SSH Transport Integration (via docker exec)", () => {
       // cfgNum might be a string or number
       const cfgNum = typeof config.cfgNum === "string" ? parseInt(config.cfgNum) : config.cfgNum;
       expect(cfgNum).toBeGreaterThan(0);
-    } catch (e: any) {
-      console.log("CLI save failed:", e.message);
+    } catch (e: unknown) {
+      console.log("CLI save failed:", e instanceof Error ? e.message : String(e));
       throw e;
     }
   });
@@ -105,8 +105,8 @@ describe("SSH Transport Integration (via docker exec)", () => {
       // Parse JSON - should be an array
       const sessions = JSON.parse(output);
       expect(Array.isArray(sessions)).toBe(true);
-    } catch (e: any) {
-      console.log("Sessions CLI failed:", e.message);
+    } catch (e: unknown) {
+      console.log("Sessions CLI failed:", e instanceof Error ? e.message : String(e));
       throw e;
     }
   });

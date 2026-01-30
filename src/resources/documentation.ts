@@ -26,9 +26,16 @@ export function registerDocumentationResource(server: McpServer): void {
 
         // Strip HTML tags for simple text extraction
         const text = html
+          .replace(/<head[^>]*>[\s\S]*?<\/head>/gi, "")
           .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
           .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
-          .replace(/<[^>]+>/g, " ")
+          .replace(/<[^>]*>/g, " ")
+          .replace(/&amp;/g, "&")
+          .replace(/&lt;/g, "<")
+          .replace(/&gt;/g, ">")
+          .replace(/&quot;/g, '"')
+          .replace(/&#39;/g, "'")
+          .replace(/&nbsp;/g, " ")
           .replace(/\s+/g, " ")
           .trim();
 

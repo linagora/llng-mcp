@@ -276,7 +276,9 @@ export class SshTransport implements ILlngTransport {
   async sessionDelete(ids: string[], backend?: string): Promise<void> {
     // lemonldap-ng-sessions only supports get and search
     // Use llngDeleteSession script instead
-    const deleteScriptPath = this.config.cliPath.replace("lemonldap-ng-cli", "llngDeleteSession");
+    const deleteScriptPath =
+      this.config.deleteSessionPath ||
+      this.config.cliPath.replace("lemonldap-ng-cli", "llngDeleteSession");
     for (const id of ids) {
       const args = [deleteScriptPath, id];
       if (backend) {

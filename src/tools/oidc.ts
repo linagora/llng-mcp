@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { randomBytes, createHash } from "crypto";
 import { OidcConfig } from "../config.js";
+import { TransportRegistry } from "../transport/registry.js";
 
 // Cache for OIDC discovery documents, keyed by issuer with TTL
 const discoveryCache = new Map<string, { metadata: any; fetchedAt: number }>();
@@ -73,29 +74,41 @@ function base64UrlDecode(str: string): string {
   return Buffer.from(base64, "base64").toString("utf-8");
 }
 
-export function registerOidcTools(server: McpServer, config: OidcConfig | undefined): void {
-  server.tool("llng_oidc_metadata", "Fetch OIDC discovery metadata", {}, async () => {
-    try {
-      if (!config) {
-        return { content: [{ type: "text", text: "Error: OIDC not configured" }], isError: true };
-      }
+export function registerOidcTools(server: McpServer, registry: TransportRegistry): void {
+  server.tool(
+    "llng_oidc_metadata",
+    "Fetch OIDC discovery metadata",
+    {
+      instance: z.string().optional().describe("LLNG instance name (uses default if omitted)"),
+    },
+    async (params) => {
+      try {
+        const config = registry.getOidcConfig(params.instance);
+        if (!config) {
+          return { content: [{ type: "text", text: "Error: OIDC not configured" }], isError: true };
+        }
 
-      const metadata = await getDiscoveryMetadata(config);
-      return { content: [{ type: "text", text: JSON.stringify(metadata, null, 2) }] };
-    } catch (e: unknown) {
-      return {
-        content: [{ type: "text", text: `Error: ${e instanceof Error ? e.message : String(e)}` }],
-        isError: true,
-      };
-    }
-  });
+        const metadata = await getDiscoveryMetadata(config);
+        return { content: [{ type: "text", text: JSON.stringify(metadata, null, 2) }] };
+      } catch (e: unknown) {
+        return {
+          content: [{ type: "text", text: `Error: ${e instanceof Error ? e.message : String(e)}` }],
+          isError: true,
+        };
+      }
+    },
+  );
 
   server.tool(
     "llng_oidc_authorize",
     "Get authorization URL with PKCE",
-    { scope: z.string().optional() },
+    {
+      scope: z.string().optional(),
+      instance: z.string().optional().describe("LLNG instance name (uses default if omitted)"),
+    },
     async (params) => {
       try {
+        const config = registry.getOidcConfig(params.instance);
         if (!config) {
           return { content: [{ type: "text", text: "Error: OIDC not configured" }], isError: true };
         }
@@ -134,9 +147,14 @@ export function registerOidcTools(server: McpServer, config: OidcConfig | undefi
   server.tool(
     "llng_oidc_tokens",
     "Exchange authorization code for tokens",
-    { code: z.string(), code_verifier: z.string() },
+    {
+      code: z.string(),
+      code_verifier: z.string(),
+      instance: z.string().optional().describe("LLNG instance name (uses default if omitted)"),
+    },
     async (params) => {
       try {
+        const config = registry.getOidcConfig(params.instance);
         if (!config) {
           return { content: [{ type: "text", text: "Error: OIDC not configured" }], isError: true };
         }
@@ -183,9 +201,13 @@ export function registerOidcTools(server: McpServer, config: OidcConfig | undefi
   server.tool(
     "llng_oidc_userinfo",
     "Get user info from OIDC provider",
-    { access_token: z.string() },
+    {
+      access_token: z.string(),
+      instance: z.string().optional().describe("LLNG instance name (uses default if omitted)"),
+    },
     async (params) => {
       try {
+        const config = registry.getOidcConfig(params.instance);
         if (!config) {
           return { content: [{ type: "text", text: "Error: OIDC not configured" }], isError: true };
         }
@@ -219,9 +241,13 @@ export function registerOidcTools(server: McpServer, config: OidcConfig | undefi
   server.tool(
     "llng_oidc_introspect",
     "Introspect an access token",
-    { token: z.string() },
+    {
+      token: z.string(),
+      instance: z.string().optional().describe("LLNG instance name (uses default if omitted)"),
+    },
     async (params) => {
       try {
+        const config = registry.getOidcConfig(params.instance);
         if (!config) {
           return { content: [{ type: "text", text: "Error: OIDC not configured" }], isError: true };
         }
@@ -273,9 +299,13 @@ export function registerOidcTools(server: McpServer, config: OidcConfig | undefi
   server.tool(
     "llng_oidc_refresh",
     "Refresh an access token",
-    { refresh_token: z.string() },
+    {
+      refresh_token: z.string(),
+      instance: z.string().optional().describe("LLNG instance name (uses default if omitted)"),
+    },
     async (params) => {
       try {
+        const config = registry.getOidcConfig(params.instance);
         if (!config) {
           return { content: [{ type: "text", text: "Error: OIDC not configured" }], isError: true };
         }
@@ -320,9 +350,13 @@ export function registerOidcTools(server: McpServer, config: OidcConfig | undefi
   server.tool(
     "llng_oidc_whoami",
     "Decode ID token to show identity (WARNING: signature is NOT verified, for debugging only)",
-    { id_token: z.string() },
+    {
+      id_token: z.string(),
+      instance: z.string().optional().describe("LLNG instance name (uses default if omitted)"),
+    },
     async (params) => {
       try {
+        const config = registry.getOidcConfig(params.instance);
         if (!config) {
           return { content: [{ type: "text", text: "Error: OIDC not configured" }], isError: true };
         }
@@ -351,9 +385,14 @@ export function registerOidcTools(server: McpServer, config: OidcConfig | undefi
   server.tool(
     "llng_oidc_check_auth",
     "Check if a URL requires authentication (only public URLs allowed, private/internal IPs blocked)",
-    { url: z.string().url(), access_token: z.string() },
+    {
+      url: z.string().url(),
+      access_token: z.string(),
+      instance: z.string().optional().describe("LLNG instance name (uses default if omitted)"),
+    },
     async (params) => {
       try {
+        const config = registry.getOidcConfig(params.instance);
         if (!config) {
           return { content: [{ type: "text", text: "Error: OIDC not configured" }], isError: true };
         }

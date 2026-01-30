@@ -1,14 +1,18 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { ILlngTransport } from "../transport/interface.js";
+import { TransportRegistry } from "../transport/registry.js";
 
-export function registerConsentTools(server: McpServer, transport: ILlngTransport): void {
+export function registerConsentTools(server: McpServer, registry: TransportRegistry): void {
   server.tool(
     "llng_consent_list",
     "List user's OIDC consents",
-    { user: z.string() },
+    {
+      user: z.string(),
+      instance: z.string().optional().describe("LLNG instance name (uses default if omitted)"),
+    },
     async (params) => {
       try {
+        const transport = registry.getTransport(params.instance);
         const result = await transport.consentsGet(params.user);
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
       } catch (e: unknown) {
@@ -23,9 +27,14 @@ export function registerConsentTools(server: McpServer, transport: ILlngTranspor
   server.tool(
     "llng_consent_delete",
     "Delete user's OIDC consent(s)",
-    { user: z.string(), ids: z.array(z.string()) },
+    {
+      user: z.string(),
+      ids: z.array(z.string()),
+      instance: z.string().optional().describe("LLNG instance name (uses default if omitted)"),
+    },
     async (params) => {
       try {
+        const transport = registry.getTransport(params.instance);
         await transport.consentsDelete(params.user, params.ids);
         return {
           content: [{ type: "text", text: `Successfully deleted ${params.ids.length} consent(s)` }],

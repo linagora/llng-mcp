@@ -3,6 +3,15 @@ import { createHash } from "crypto";
 import { registerOidcTools } from "../tools/oidc.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { OidcConfig } from "../config.js";
+import { TransportRegistry } from "../transport/registry.js";
+
+function createMockOidcRegistry(config: OidcConfig | undefined): TransportRegistry {
+  return {
+    getTransport: vi.fn(),
+    getOidcConfig: vi.fn().mockReturnValue(config),
+    listInstances: vi.fn().mockReturnValue([]),
+  } as unknown as TransportRegistry;
+}
 
 describe("OIDC Tools", () => {
   let originalFetch: typeof global.fetch;
@@ -46,7 +55,7 @@ describe("OIDC Tools", () => {
         }),
       } as unknown as McpServer;
 
-      registerOidcTools(mockServer, config);
+      registerOidcTools(mockServer, createMockOidcRegistry(config));
 
       const authorizeHandler = toolResults.find((t) => t.name === "llng_oidc_authorize")?.handler;
       const result = await authorizeHandler({});
@@ -85,7 +94,7 @@ describe("OIDC Tools", () => {
         }),
       } as unknown as McpServer;
 
-      registerOidcTools(mockServer, config);
+      registerOidcTools(mockServer, createMockOidcRegistry(config));
 
       const authorizeHandler = toolResults.find((t) => t.name === "llng_oidc_authorize")?.handler;
       const result = await authorizeHandler({});
@@ -128,7 +137,7 @@ describe("OIDC Tools", () => {
         }),
       } as unknown as McpServer;
 
-      registerOidcTools(mockServer, config);
+      registerOidcTools(mockServer, createMockOidcRegistry(config));
 
       const whoamiHandler = toolResults.find((t) => t.name === "llng_oidc_whoami")?.handler;
 
@@ -170,7 +179,7 @@ describe("OIDC Tools", () => {
         }),
       } as unknown as McpServer;
 
-      registerOidcTools(mockServer, config);
+      registerOidcTools(mockServer, createMockOidcRegistry(config));
 
       const whoamiHandler = toolResults.find((t) => t.name === "llng_oidc_whoami")?.handler;
 
@@ -197,7 +206,7 @@ describe("OIDC Tools", () => {
         }),
       } as unknown as McpServer;
 
-      registerOidcTools(mockServer, config);
+      registerOidcTools(mockServer, createMockOidcRegistry(config));
 
       const whoamiHandler = toolResults.find((t) => t.name === "llng_oidc_whoami")?.handler;
 
@@ -225,7 +234,7 @@ describe("OIDC Tools", () => {
         }),
       } as unknown as McpServer;
 
-      registerOidcTools(mockServer, undefined);
+      registerOidcTools(mockServer, createMockOidcRegistry(undefined));
 
       // Test each tool
       for (const tool of toolResults) {
@@ -271,7 +280,7 @@ describe("OIDC Tools", () => {
         }),
       } as unknown as McpServer;
 
-      registerOidcTools(mockServer, config);
+      registerOidcTools(mockServer, createMockOidcRegistry(config));
 
       const metadataHandler = toolResults.find((t) => t.name === "llng_oidc_metadata")?.handler;
       expect(metadataHandler).toBeDefined();
@@ -301,7 +310,7 @@ describe("OIDC Tools", () => {
         }),
       } as unknown as McpServer;
 
-      registerOidcTools(mockServer, config);
+      registerOidcTools(mockServer, createMockOidcRegistry(config));
 
       expect(toolNames).toEqual([
         "llng_oidc_metadata",
@@ -346,7 +355,7 @@ describe("OIDC Tools", () => {
         }),
       } as unknown as McpServer;
 
-      registerOidcTools(mockServer, config);
+      registerOidcTools(mockServer, createMockOidcRegistry(config));
 
       const authorizeHandler = toolResults.find((t) => t.name === "llng_oidc_authorize")?.handler;
       const result = await authorizeHandler({});
@@ -392,7 +401,7 @@ describe("OIDC Tools", () => {
         }),
       } as unknown as McpServer;
 
-      registerOidcTools(mockServer, config);
+      registerOidcTools(mockServer, createMockOidcRegistry(config));
 
       const authorizeHandler = toolResults.find((t) => t.name === "llng_oidc_authorize")?.handler;
       const result = await authorizeHandler({ scope: "openid email offline_access" });
@@ -454,7 +463,7 @@ describe("OIDC Tools", () => {
         }),
       } as unknown as McpServer;
 
-      registerOidcTools(mockServer, config);
+      registerOidcTools(mockServer, createMockOidcRegistry(config));
 
       const tokensHandler = toolResults.find((t) => t.name === "llng_oidc_tokens")?.handler;
       await tokensHandler({ code: "auth_code_123", code_verifier: "verifier123" });
@@ -494,7 +503,7 @@ describe("OIDC Tools", () => {
         }),
       } as unknown as McpServer;
 
-      registerOidcTools(mockServer, config);
+      registerOidcTools(mockServer, createMockOidcRegistry(config));
 
       const metadataHandler = toolResults.find((t) => t.name === "llng_oidc_metadata")?.handler;
       expect(metadataHandler).toBeDefined();
@@ -530,7 +539,7 @@ describe("OIDC Tools", () => {
         }),
       } as unknown as McpServer;
 
-      registerOidcTools(mockServer, config);
+      registerOidcTools(mockServer, createMockOidcRegistry(config));
 
       const metadataHandler = toolResults.find((t) => t.name === "llng_oidc_metadata")?.handler;
       expect(metadataHandler).toBeDefined();

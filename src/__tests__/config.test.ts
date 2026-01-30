@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { loadConfig } from "../config.js";
+import { loadConfig, loadMultiConfig } from "../config.js";
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
@@ -348,5 +348,142 @@ describe("loadConfig", () => {
       sessionsPath: "/usr/share/lemonldap-ng/bin/lemonldap-ng-sessions",
       configEditorPath: "/custom/configEditor",
     });
+  });
+});
+
+describe("loadMultiConfig", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    vi.mocked(os.homedir).mockReturnValue("/home/testuser");
+    vi.mocked(path.join).mockImplementation((...args) => args.join("/"));
+
+    // Clear env vars
+    delete process.env.LLNG_MODE;
+    delete process.env.LLNG_SSH_HOST;
+    delete process.env.LLNG_SSH_USER;
+    delete process.env.LLNG_SSH_PORT;
+    delete process.env.LLNG_SSH_SUDO;
+    delete process.env.LLNG_SSH_CLI_PATH;
+    delete process.env.LLNG_SSH_SESSIONS_PATH;
+    delete process.env.LLNG_SSH_CONFIG_EDITOR_PATH;
+    delete process.env.LLNG_API_URL;
+    delete process.env.LLNG_API_BASIC_USER;
+    delete process.env.LLNG_API_BASIC_PASSWORD;
+    delete process.env.LLNG_API_VERIFY_SSL;
+    delete process.env.LLNG_OIDC_ISSUER;
+    delete process.env.LLNG_OIDC_CLIENT_ID;
+    delete process.env.LLNG_OIDC_CLIENT_SECRET;
+    delete process.env.LLNG_OIDC_REDIRECT_URI;
+    delete process.env.LLNG_OIDC_SCOPE;
+  });
+
+  afterEach(() => {
+    delete process.env.LLNG_MODE;
+    delete process.env.LLNG_SSH_HOST;
+    delete process.env.LLNG_SSH_USER;
+    delete process.env.LLNG_SSH_PORT;
+    delete process.env.LLNG_SSH_SUDO;
+    delete process.env.LLNG_SSH_CLI_PATH;
+    delete process.env.LLNG_SSH_SESSIONS_PATH;
+    delete process.env.LLNG_SSH_CONFIG_EDITOR_PATH;
+    delete process.env.LLNG_API_URL;
+    delete process.env.LLNG_API_BASIC_USER;
+    delete process.env.LLNG_API_BASIC_PASSWORD;
+    delete process.env.LLNG_API_VERIFY_SSL;
+    delete process.env.LLNG_OIDC_ISSUER;
+    delete process.env.LLNG_OIDC_CLIENT_ID;
+    delete process.env.LLNG_OIDC_CLIENT_SECRET;
+    delete process.env.LLNG_OIDC_REDIRECT_URI;
+    delete process.env.LLNG_OIDC_SCOPE;
+  });
+
+  it("wraps legacy flat config as default instance", () => {
+    const error: any = new Error("ENOENT");
+    error.code = "ENOENT";
+    vi.mocked(fs.readFileSync).mockImplementation(() => {
+      throw error;
+    });
+
+    const multi = loadMultiConfig();
+
+    expect(multi.default).toBe("default");
+    expect(Object.keys(multi.instances)).toEqual(["default"]);
+    expect(multi.instances.default.mode).toBe("ssh");
+  });
+
+  it("loads multi-instance config", () => {
+    const fileConfig = {
+      instances: {
+        prod: { mode: "api", api: { baseUrl: "https://prod.example.com" } },
+        staging: { mode: "ssh", ssh: { host: "staging.example.com" } },
+      },
+      default: "prod",
+    };
+
+    vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(fileConfig));
+
+    const multi = loadMultiConfig();
+
+    expect(multi.default).toBe("prod");
+    expect(Object.keys(multi.instances)).toEqual(["prod", "staging"]);
+    expect(multi.instances.prod.mode).toBe("api");
+    expect(multi.instances.prod.api?.baseUrl).toBe("https://prod.example.com");
+    expect(multi.instances.staging.mode).toBe("ssh");
+    expect(multi.instances.staging.ssh?.host).toBe("staging.example.com");
+  });
+
+  it("applies SSH defaults to multi-instance configs", () => {
+    const fileConfig = {
+      instances: {
+        local: { mode: "ssh" },
+      },
+      default: "local",
+    };
+
+    vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(fileConfig));
+
+    const multi = loadMultiConfig();
+
+    expect(multi.instances.local.ssh?.cliPath).toBe("/usr/share/lemonldap-ng/bin/lemonldap-ng-cli");
+    expect(multi.instances.local.ssh?.sessionsPath).toBe(
+      "/usr/share/lemonldap-ng/bin/lemonldap-ng-sessions",
+    );
+    expect(multi.instances.local.ssh?.configEditorPath).toBe(
+      "/usr/share/lemonldap-ng/bin/lmConfigEditor",
+    );
+  });
+
+  it("applies env vars to the default instance only", () => {
+    const fileConfig = {
+      instances: {
+        prod: { mode: "api", api: { baseUrl: "https://prod.example.com" } },
+        staging: { mode: "api", api: { baseUrl: "https://staging.example.com" } },
+      },
+      default: "prod",
+    };
+
+    vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(fileConfig));
+
+    process.env.LLNG_MODE = "ssh";
+
+    const multi = loadMultiConfig();
+
+    expect(multi.instances.prod.mode).toBe("ssh");
+    expect(multi.instances.staging.mode).toBe("api");
+  });
+
+  it("uses first instance as default when default is not specified", () => {
+    const fileConfig = {
+      instances: {
+        alpha: { mode: "ssh" },
+        beta: { mode: "api", api: { baseUrl: "https://beta.example.com" } },
+      },
+    };
+
+    vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(fileConfig));
+
+    const multi = loadMultiConfig();
+
+    expect(multi.default).toBe("alpha");
   });
 });

@@ -1,11 +1,12 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { ILlngTransport, SessionFilter } from "../transport/interface.js";
+import { SessionFilter } from "../transport/interface.js";
+import { TransportRegistry } from "../transport/registry.js";
 
 /**
  * Register LLNG session management tools
  */
-export function registerSessionTools(server: McpServer, transport: ILlngTransport): void {
+export function registerSessionTools(server: McpServer, registry: TransportRegistry): void {
   // 1. llng_session_get - Get LLNG session by ID
   server.tool(
     "llng_session_get",
@@ -16,9 +17,11 @@ export function registerSessionTools(server: McpServer, transport: ILlngTranspor
         .string()
         .optional()
         .describe("Optional backend type (persistent, oidc, saml, cas)"),
+      instance: z.string().optional().describe("LLNG instance name (uses default if omitted)"),
     },
     async (args) => {
       try {
+        const transport = registry.getTransport(args.instance);
         const result = await transport.sessionGet(args.id, args.backend);
         return {
           content: [
@@ -54,9 +57,11 @@ export function registerSessionTools(server: McpServer, transport: ILlngTranspor
       select: z.array(z.string()).optional().describe("Fields to return in results"),
       backend: z.string().optional().describe("Backend type (persistent, oidc, saml, cas)"),
       count: z.boolean().optional().describe("Return only the count of matching sessions"),
+      instance: z.string().optional().describe("LLNG instance name (uses default if omitted)"),
     },
     async (args) => {
       try {
+        const transport = registry.getTransport(args.instance);
         const filters: SessionFilter = {
           where: args.where,
           select: args.select,
@@ -96,9 +101,11 @@ export function registerSessionTools(server: McpServer, transport: ILlngTranspor
         .string()
         .optional()
         .describe("Optional backend type (persistent, oidc, saml, cas)"),
+      instance: z.string().optional().describe("LLNG instance name (uses default if omitted)"),
     },
     async (args) => {
       try {
+        const transport = registry.getTransport(args.instance);
         await transport.sessionDelete(args.ids, args.backend);
         return {
           content: [
@@ -129,9 +136,11 @@ export function registerSessionTools(server: McpServer, transport: ILlngTranspor
     {
       id: z.string().describe("The session ID to modify"),
       keys: z.record(z.string(), z.any()).describe("Key-value pairs to set in the session"),
+      instance: z.string().optional().describe("LLNG instance name (uses default if omitted)"),
     },
     async (args) => {
       try {
+        const transport = registry.getTransport(args.instance);
         await transport.sessionSetKey(args.id, args.keys);
         return {
           content: [
@@ -162,9 +171,11 @@ export function registerSessionTools(server: McpServer, transport: ILlngTranspor
     {
       id: z.string().describe("The session ID to modify"),
       keys: z.array(z.string()).describe("Array of keys to delete from the session"),
+      instance: z.string().optional().describe("LLNG instance name (uses default if omitted)"),
     },
     async (args) => {
       try {
+        const transport = registry.getTransport(args.instance);
         await transport.sessionDelKey(args.id, args.keys);
         return {
           content: [
@@ -197,9 +208,11 @@ export function registerSessionTools(server: McpServer, transport: ILlngTranspor
         .string()
         .optional()
         .describe("Optional backend type to backup (persistent, oidc, saml, cas)"),
+      instance: z.string().optional().describe("LLNG instance name (uses default if omitted)"),
     },
     async (args) => {
       try {
+        const transport = registry.getTransport(args.instance);
         const result = await transport.sessionBackup(args.backend);
         return {
           content: [

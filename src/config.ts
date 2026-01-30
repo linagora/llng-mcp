@@ -2,14 +2,18 @@ import { readFileSync, statSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
 
+const DEFAULT_BIN_PREFIX = "/usr/share/lemonldap-ng/bin";
+
 export interface SshConfig {
   host?: string;
   user?: string;
   port?: number;
   sudo?: string;
-  cliPath: string;
-  sessionsPath: string;
-  configEditorPath: string;
+  remoteCommand?: string;
+  binPrefix?: string;
+  cliPath?: string;
+  sessionsPath?: string;
+  configEditorPath?: string;
   deleteSessionPath?: string;
 }
 
@@ -27,22 +31,48 @@ export interface OidcConfig {
   scope: string;
 }
 
+export interface K8sConfig {
+  context?: string;
+  namespace: string;
+  deployment: string;
+  container?: string;
+  podSelector?: string;
+  binPrefix?: string;
+}
+
 export interface LlngConfig {
-  mode: "ssh" | "api";
+  mode: "ssh" | "api" | "k8s";
   ssh?: SshConfig;
   api?: ApiConfig;
+  k8s?: K8sConfig;
   oidc?: OidcConfig;
+}
+
+export interface ResolvedPaths {
+  cliPath: string;
+  sessionsPath: string;
+  configEditorPath: string;
+}
+
+export function resolvePaths(
+  binPrefix?: string,
+  cliPath?: string,
+  sessionsPath?: string,
+  configEditorPath?: string,
+): ResolvedPaths {
+  const prefix = binPrefix || DEFAULT_BIN_PREFIX;
+  return {
+    cliPath: cliPath || `${prefix}/lemonldap-ng-cli`,
+    sessionsPath: sessionsPath || `${prefix}/lemonldap-ng-sessions`,
+    configEditorPath: configEditorPath || `${prefix}/lmConfigEditor`,
+  };
 }
 
 export function loadConfig(): LlngConfig {
   // Start with defaults
   const config: LlngConfig = {
     mode: "ssh",
-    ssh: {
-      cliPath: "/usr/share/lemonldap-ng/bin/lemonldap-ng-cli",
-      sessionsPath: "/usr/share/lemonldap-ng/bin/lemonldap-ng-sessions",
-      configEditorPath: "/usr/share/lemonldap-ng/bin/lmConfigEditor",
-    },
+    ssh: {},
   };
 
   // Try to load config file from ~/.llng-mcp.json
@@ -71,6 +101,9 @@ export function loadConfig(): LlngConfig {
     if (fileConfig.api) {
       config.api = fileConfig.api;
     }
+    if (fileConfig.k8s) {
+      config.k8s = fileConfig.k8s;
+    }
     if (fileConfig.oidc) {
       config.oidc = fileConfig.oidc;
     }
@@ -80,17 +113,13 @@ export function loadConfig(): LlngConfig {
 
   // Overlay environment variables
   if (process.env.LLNG_MODE) {
-    config.mode = process.env.LLNG_MODE as "ssh" | "api";
+    config.mode = process.env.LLNG_MODE as "ssh" | "api" | "k8s";
   }
 
-  // SSH config - helper to ensure ssh config exists with defaults
+  // SSH config - helper to ensure ssh config exists
   const ensureSshConfig = () => {
     if (!config.ssh) {
-      config.ssh = {
-        cliPath: "/usr/share/lemonldap-ng/bin/lemonldap-ng-cli",
-        sessionsPath: "/usr/share/lemonldap-ng/bin/lemonldap-ng-sessions",
-        configEditorPath: "/usr/share/lemonldap-ng/bin/lmConfigEditor",
-      };
+      config.ssh = {};
     }
     return config.ssh;
   };
@@ -106,6 +135,12 @@ export function loadConfig(): LlngConfig {
   }
   if (process.env.LLNG_SSH_SUDO) {
     ensureSshConfig().sudo = process.env.LLNG_SSH_SUDO;
+  }
+  if (process.env.LLNG_SSH_REMOTE_COMMAND) {
+    ensureSshConfig().remoteCommand = process.env.LLNG_SSH_REMOTE_COMMAND;
+  }
+  if (process.env.LLNG_SSH_BIN_PREFIX) {
+    ensureSshConfig().binPrefix = process.env.LLNG_SSH_BIN_PREFIX;
   }
   if (process.env.LLNG_SSH_CLI_PATH) {
     ensureSshConfig().cliPath = process.env.LLNG_SSH_CLI_PATH;
@@ -137,6 +172,33 @@ export function loadConfig(): LlngConfig {
     config.api.verifySsl = process.env.LLNG_API_VERIFY_SSL !== "false";
   }
 
+  // K8s config
+  const ensureK8sConfig = () => {
+    if (!config.k8s) {
+      config.k8s = { namespace: "", deployment: "" };
+    }
+    return config.k8s;
+  };
+
+  if (process.env.LLNG_K8S_CONTEXT) {
+    ensureK8sConfig().context = process.env.LLNG_K8S_CONTEXT;
+  }
+  if (process.env.LLNG_K8S_NAMESPACE) {
+    ensureK8sConfig().namespace = process.env.LLNG_K8S_NAMESPACE;
+  }
+  if (process.env.LLNG_K8S_DEPLOYMENT) {
+    ensureK8sConfig().deployment = process.env.LLNG_K8S_DEPLOYMENT;
+  }
+  if (process.env.LLNG_K8S_CONTAINER) {
+    ensureK8sConfig().container = process.env.LLNG_K8S_CONTAINER;
+  }
+  if (process.env.LLNG_K8S_POD_SELECTOR) {
+    ensureK8sConfig().podSelector = process.env.LLNG_K8S_POD_SELECTOR;
+  }
+  if (process.env.LLNG_K8S_BIN_PREFIX) {
+    ensureK8sConfig().binPrefix = process.env.LLNG_K8S_BIN_PREFIX;
+  }
+
   // OIDC config
   if (process.env.LLNG_OIDC_ISSUER) {
     config.oidc = config.oidc || { issuer: "", clientId: "", redirectUri: "", scope: "" };
@@ -159,15 +221,6 @@ export function loadConfig(): LlngConfig {
     config.oidc.scope = process.env.LLNG_OIDC_SCOPE;
   }
 
-  // Ensure SSH defaults are applied
-  if (config.ssh) {
-    config.ssh.cliPath = config.ssh.cliPath || "/usr/share/lemonldap-ng/bin/lemonldap-ng-cli";
-    config.ssh.sessionsPath =
-      config.ssh.sessionsPath || "/usr/share/lemonldap-ng/bin/lemonldap-ng-sessions";
-    config.ssh.configEditorPath =
-      config.ssh.configEditorPath || "/usr/share/lemonldap-ng/bin/lmConfigEditor";
-  }
-
   return config;
 }
 
@@ -182,38 +235,28 @@ export interface LlngMultiConfig {
 function applyInstanceDefaults(partial: Partial<LlngConfig>): LlngConfig {
   const config: LlngConfig = {
     mode: partial.mode || "ssh",
-    ssh: partial.ssh
-      ? {
-          ...partial.ssh,
-          cliPath: partial.ssh.cliPath || "/usr/share/lemonldap-ng/bin/lemonldap-ng-cli",
-          sessionsPath:
-            partial.ssh.sessionsPath || "/usr/share/lemonldap-ng/bin/lemonldap-ng-sessions",
-          configEditorPath:
-            partial.ssh.configEditorPath || "/usr/share/lemonldap-ng/bin/lmConfigEditor",
-        }
-      : {
-          cliPath: "/usr/share/lemonldap-ng/bin/lemonldap-ng-cli",
-          sessionsPath: "/usr/share/lemonldap-ng/bin/lemonldap-ng-sessions",
-          configEditorPath: "/usr/share/lemonldap-ng/bin/lmConfigEditor",
-        },
   };
+  if (partial.ssh) config.ssh = { ...partial.ssh };
   if (partial.api) config.api = partial.api;
+  if (partial.k8s) config.k8s = partial.k8s;
   if (partial.oidc) config.oidc = partial.oidc;
+
+  // For ssh mode without explicit ssh config, provide empty object
+  if (config.mode === "ssh" && !config.ssh) {
+    config.ssh = {};
+  }
+
   return config;
 }
 
 function applyEnvOverrides(config: LlngConfig): void {
   if (process.env.LLNG_MODE) {
-    config.mode = process.env.LLNG_MODE as "ssh" | "api";
+    config.mode = process.env.LLNG_MODE as "ssh" | "api" | "k8s";
   }
 
   const ensureSsh = () => {
     if (!config.ssh) {
-      config.ssh = {
-        cliPath: "/usr/share/lemonldap-ng/bin/lemonldap-ng-cli",
-        sessionsPath: "/usr/share/lemonldap-ng/bin/lemonldap-ng-sessions",
-        configEditorPath: "/usr/share/lemonldap-ng/bin/lmConfigEditor",
-      };
+      config.ssh = {};
     }
     return config.ssh;
   };
@@ -222,6 +265,8 @@ function applyEnvOverrides(config: LlngConfig): void {
   if (process.env.LLNG_SSH_USER) ensureSsh().user = process.env.LLNG_SSH_USER;
   if (process.env.LLNG_SSH_PORT) ensureSsh().port = parseInt(process.env.LLNG_SSH_PORT, 10);
   if (process.env.LLNG_SSH_SUDO) ensureSsh().sudo = process.env.LLNG_SSH_SUDO;
+  if (process.env.LLNG_SSH_REMOTE_COMMAND) ensureSsh().remoteCommand = process.env.LLNG_SSH_REMOTE_COMMAND;
+  if (process.env.LLNG_SSH_BIN_PREFIX) ensureSsh().binPrefix = process.env.LLNG_SSH_BIN_PREFIX;
   if (process.env.LLNG_SSH_CLI_PATH) ensureSsh().cliPath = process.env.LLNG_SSH_CLI_PATH;
   if (process.env.LLNG_SSH_SESSIONS_PATH)
     ensureSsh().sessionsPath = process.env.LLNG_SSH_SESSIONS_PATH;
@@ -246,6 +291,21 @@ function applyEnvOverrides(config: LlngConfig): void {
     config.api.verifySsl = process.env.LLNG_API_VERIFY_SSL !== "false";
   }
 
+  // K8s env overrides
+  const ensureK8s = () => {
+    if (!config.k8s) {
+      config.k8s = { namespace: "", deployment: "" };
+    }
+    return config.k8s;
+  };
+
+  if (process.env.LLNG_K8S_CONTEXT) ensureK8s().context = process.env.LLNG_K8S_CONTEXT;
+  if (process.env.LLNG_K8S_NAMESPACE) ensureK8s().namespace = process.env.LLNG_K8S_NAMESPACE;
+  if (process.env.LLNG_K8S_DEPLOYMENT) ensureK8s().deployment = process.env.LLNG_K8S_DEPLOYMENT;
+  if (process.env.LLNG_K8S_CONTAINER) ensureK8s().container = process.env.LLNG_K8S_CONTAINER;
+  if (process.env.LLNG_K8S_POD_SELECTOR) ensureK8s().podSelector = process.env.LLNG_K8S_POD_SELECTOR;
+  if (process.env.LLNG_K8S_BIN_PREFIX) ensureK8s().binPrefix = process.env.LLNG_K8S_BIN_PREFIX;
+
   if (process.env.LLNG_OIDC_ISSUER) {
     config.oidc = config.oidc || { issuer: "", clientId: "", redirectUri: "", scope: "" };
     config.oidc.issuer = process.env.LLNG_OIDC_ISSUER;
@@ -265,15 +325,6 @@ function applyEnvOverrides(config: LlngConfig): void {
   if (process.env.LLNG_OIDC_SCOPE) {
     config.oidc = config.oidc || { issuer: "", clientId: "", redirectUri: "", scope: "" };
     config.oidc.scope = process.env.LLNG_OIDC_SCOPE;
-  }
-
-  // Ensure SSH defaults
-  if (config.ssh) {
-    config.ssh.cliPath = config.ssh.cliPath || "/usr/share/lemonldap-ng/bin/lemonldap-ng-cli";
-    config.ssh.sessionsPath =
-      config.ssh.sessionsPath || "/usr/share/lemonldap-ng/bin/lemonldap-ng-sessions";
-    config.ssh.configEditorPath =
-      config.ssh.configEditorPath || "/usr/share/lemonldap-ng/bin/lmConfigEditor";
   }
 }
 

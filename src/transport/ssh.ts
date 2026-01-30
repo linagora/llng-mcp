@@ -1,6 +1,12 @@
 import { spawn } from "child_process";
 import { SshConfig, resolvePaths } from "../config.js";
-import { ILlngTransport, SessionFilter, ConfigInfo, SessionGetOptions, SessionDeleteOptions } from "./interface.js";
+import {
+  ILlngTransport,
+  SessionFilter,
+  ConfigInfo,
+  SessionGetOptions,
+  SessionDeleteOptions,
+} from "./interface.js";
 
 export class SshTransport implements ILlngTransport {
   private paths: { cliPath: string; sessionsPath: string; configEditorPath: string };
@@ -365,7 +371,11 @@ export class SshTransport implements ILlngTransport {
     }
   }
 
-  async sessionSetKey(id: string, pairs: Record<string, any>, options?: SessionGetOptions): Promise<void> {
+  async sessionSetKey(
+    id: string,
+    pairs: Record<string, any>,
+    options?: SessionGetOptions,
+  ): Promise<void> {
     const args: string[] = ["setKey", id];
     for (const [key, value] of Object.entries(pairs)) {
       args.push(key, String(value));
@@ -380,7 +390,11 @@ export class SshTransport implements ILlngTransport {
     await this.execSessions(args);
   }
 
-  async sessionBackup(backend?: string, refreshTokens?: boolean, persistent?: boolean): Promise<string> {
+  async sessionBackup(
+    backend?: string,
+    refreshTokens?: boolean,
+    persistent?: boolean,
+  ): Promise<string> {
     // Return all sessions as JSON via search with no filters
     const args = ["search"];
     if (backend) {

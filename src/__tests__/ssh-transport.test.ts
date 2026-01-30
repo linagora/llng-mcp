@@ -439,7 +439,14 @@ Log      : Test config`;
 
       expect(spawnCalls).toHaveLength(1);
       expect(spawnCalls[0].cmd).toBe("/usr/share/lemonldap-ng/bin/lemonldap-ng-sessions");
-      expect(spawnCalls[0].args).toEqual(["setKey", "sessionid123", "uid", "jane", "mail", "jane@example.com"]);
+      expect(spawnCalls[0].args).toEqual([
+        "setKey",
+        "sessionid123",
+        "uid",
+        "jane",
+        "mail",
+        "jane@example.com",
+      ]);
     });
 
     it("sessionSetKey with persistent option", async () => {
@@ -470,7 +477,13 @@ Log      : Test config`;
       await transport.sessionDelKey("sessionid123", ["key1"], { backend: "persistent" });
 
       expect(spawnCalls).toHaveLength(1);
-      expect(spawnCalls[0].args).toEqual(["delKey", "sessionid123", "key1", "--backend", "persistent"]);
+      expect(spawnCalls[0].args).toEqual([
+        "delKey",
+        "sessionid123",
+        "key1",
+        "--backend",
+        "persistent",
+      ]);
     });
 
     it("sessionBackup returns all sessions via search", async () => {

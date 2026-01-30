@@ -264,10 +264,7 @@ describe("K8sTransport", () => {
     });
 
     it("sessionSetKey uses execSessions with setKey command", async () => {
-      setupSpawnMock(
-        { stdout: "llng-pod-123" },
-        { stdout: "" },
-      );
+      setupSpawnMock({ stdout: "llng-pod-123" }, { stdout: "" });
 
       const transport = new K8sTransport(defaultConfig);
       await transport.sessionSetKey("sid1", { uid: "jane" });
@@ -277,10 +274,7 @@ describe("K8sTransport", () => {
     });
 
     it("sessionDelKey uses execSessions with delKey command", async () => {
-      setupSpawnMock(
-        { stdout: "llng-pod-123" },
-        { stdout: "" },
-      );
+      setupSpawnMock({ stdout: "llng-pod-123" }, { stdout: "" });
 
       const transport = new K8sTransport(defaultConfig);
       await transport.sessionDelKey("sid1", ["key1"]);

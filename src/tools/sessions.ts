@@ -28,7 +28,9 @@ export function registerSessionTools(server: McpServer, registry: TransportRegis
       hash: z
         .boolean()
         .optional()
-        .describe("Indicates the given session ID is the original cookie value (for hashed session storage)"),
+        .describe(
+          "Indicates the given session ID is the original cookie value (for hashed session storage)",
+        ),
       instance: z.string().optional().describe("LLNG instance name (uses default if omitted)"),
     },
     async (args) => {
@@ -79,24 +81,15 @@ export function registerSessionTools(server: McpServer, registry: TransportRegis
         .boolean()
         .optional()
         .describe("Filter for refresh token (offline) sessions only"),
-      persistent: z
-        .boolean()
-        .optional()
-        .describe("Shortcut for --backend persistent"),
-      hash: z
-        .boolean()
-        .optional()
-        .describe("Indicates session IDs are original cookie values"),
-      idOnly: z
-        .boolean()
-        .optional()
-        .describe("Only return session IDs"),
+      persistent: z.boolean().optional().describe("Shortcut for --backend persistent"),
+      hash: z.boolean().optional().describe("Indicates session IDs are original cookie values"),
+      idOnly: z.boolean().optional().describe("Only return session IDs"),
       kind: z
         .string()
         .optional()
         .describe(
           "Filter by session kind: SSO, SAML, CAS, OIDC, Persistent. " +
-          "This is a shortcut that adds _session_kind to the where filter"
+            "This is a shortcut that adds _session_kind to the where filter",
         ),
       instance: z.string().optional().describe("LLNG instance name (uses default if omitted)"),
     },
@@ -145,7 +138,10 @@ export function registerSessionTools(server: McpServer, registry: TransportRegis
     "llng_session_delete",
     "Delete LLNG session(s)",
     {
-      ids: z.array(z.string()).optional().describe("Array of session IDs to delete (not needed when using where)"),
+      ids: z
+        .array(z.string())
+        .optional()
+        .describe("Array of session IDs to delete (not needed when using where)"),
       backend: z
         .string()
         .optional()
@@ -154,14 +150,8 @@ export function registerSessionTools(server: McpServer, registry: TransportRegis
         .boolean()
         .optional()
         .describe("Filter for refresh token (offline) sessions only"),
-      persistent: z
-        .boolean()
-        .optional()
-        .describe("Shortcut for --backend persistent"),
-      hash: z
-        .boolean()
-        .optional()
-        .describe("Indicates session IDs are original cookie values"),
+      persistent: z.boolean().optional().describe("Shortcut for --backend persistent"),
+      hash: z.boolean().optional().describe("Indicates session IDs are original cookie values"),
       where: z
         .record(z.string(), z.string())
         .optional()
@@ -171,7 +161,7 @@ export function registerSessionTools(server: McpServer, registry: TransportRegis
         .optional()
         .describe(
           "Filter by session kind: SSO, SAML, CAS, OIDC, Persistent. " +
-          "This is a shortcut that adds _session_kind to the where filter"
+            "This is a shortcut that adds _session_kind to the where filter",
         ),
       instance: z.string().optional().describe("LLNG instance name (uses default if omitted)"),
     },
@@ -191,9 +181,7 @@ export function registerSessionTools(server: McpServer, registry: TransportRegis
         };
         const ids = args.ids || [];
         await transport.sessionDelete(ids, options);
-        const desc = args.where || args.kind
-          ? "matching sessions"
-          : `${ids.length} session(s)`;
+        const desc = args.where || args.kind ? "matching sessions" : `${ids.length} session(s)`;
         return {
           content: [
             {
@@ -319,16 +307,17 @@ export function registerSessionTools(server: McpServer, registry: TransportRegis
         .boolean()
         .optional()
         .describe("Filter for refresh token (offline) sessions only"),
-      persistent: z
-        .boolean()
-        .optional()
-        .describe("Shortcut for --backend persistent"),
+      persistent: z.boolean().optional().describe("Shortcut for --backend persistent"),
       instance: z.string().optional().describe("LLNG instance name (uses default if omitted)"),
     },
     async (args) => {
       try {
         const transport = registry.getTransport(args.instance);
-        const result = await transport.sessionBackup(args.backend, args.refreshTokens, args.persistent);
+        const result = await transport.sessionBackup(
+          args.backend,
+          args.refreshTokens,
+          args.persistent,
+        );
         return {
           content: [
             {

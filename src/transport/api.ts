@@ -1,4 +1,10 @@
-import { ILlngTransport, ConfigInfo, SessionFilter, SessionGetOptions, SessionDeleteOptions } from "./interface.js";
+import {
+  ILlngTransport,
+  ConfigInfo,
+  SessionFilter,
+  SessionGetOptions,
+  SessionDeleteOptions,
+} from "./interface.js";
 import { ApiConfig } from "../config.js";
 import https from "https";
 
@@ -233,10 +239,10 @@ export class ApiTransport implements ILlngTransport {
     // Handle refreshTokens: use backend="oidc" and add _type filter
     if (filters.refreshTokens) {
       backend = "oidc";
-      const whereClause = filters.where ? { ...filters.where, _type: "refresh_token" } : { _type: "refresh_token" };
-      const whereClauses = Object.entries(whereClause).map(
-        ([field, value]) => `${field}=${value}`,
-      );
+      const whereClause = filters.where
+        ? { ...filters.where, _type: "refresh_token" }
+        : { _type: "refresh_token" };
+      const whereClauses = Object.entries(whereClause).map(([field, value]) => `${field}=${value}`);
       queryParams.push(`where=${encodeURIComponent(whereClauses.join(" AND "))}`);
     } else if (filters.where) {
       // Build where clause
@@ -308,9 +314,17 @@ export class ApiTransport implements ILlngTransport {
     }
   }
 
-  async sessionSetKey(id: string, pairs: Record<string, any>, options?: SessionGetOptions): Promise<void> {
+  async sessionSetKey(
+    id: string,
+    pairs: Record<string, any>,
+    options?: SessionGetOptions,
+  ): Promise<void> {
     const backendName = this.resolveBackend(options);
-    await this.request("PUT", `/api/v1/sessions/${encodeURIComponent(backendName)}/${encodeURIComponent(id)}`, pairs);
+    await this.request(
+      "PUT",
+      `/api/v1/sessions/${encodeURIComponent(backendName)}/${encodeURIComponent(id)}`,
+      pairs,
+    );
   }
 
   async sessionDelKey(id: string, keys: string[], options?: SessionGetOptions): Promise<void> {
@@ -319,10 +333,18 @@ export class ApiTransport implements ILlngTransport {
     for (const key of keys) {
       pairs[key] = null;
     }
-    await this.request("PUT", `/api/v1/sessions/${encodeURIComponent(backendName)}/${encodeURIComponent(id)}`, pairs);
+    await this.request(
+      "PUT",
+      `/api/v1/sessions/${encodeURIComponent(backendName)}/${encodeURIComponent(id)}`,
+      pairs,
+    );
   }
 
-  async sessionBackup(backend?: string, refreshTokens?: boolean, persistent?: boolean): Promise<string> {
+  async sessionBackup(
+    backend?: string,
+    refreshTokens?: boolean,
+    persistent?: boolean,
+  ): Promise<string> {
     let backendName = backend || "global";
     if (persistent) {
       backendName = "persistent";

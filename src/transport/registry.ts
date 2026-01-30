@@ -1,11 +1,19 @@
-import { LlngMultiConfig, LlngInstanceConfig, OidcConfig } from "../config.js";
+import { LlngMultiConfig, LlngInstanceConfig, LlngConfig, OidcConfig } from "../config.js";
 import { ILlngTransport } from "./interface.js";
 import { ApiTransport } from "./api.js";
 import { SshTransport } from "./ssh.js";
 import { K8sTransport } from "./k8s.js";
 
+export type TransportRole = "portal" | "manager";
+
+interface TransportEntry {
+  portal: ILlngTransport;
+  manager?: ILlngTransport;
+  managerResolved?: boolean;
+}
+
 export class TransportRegistry {
-  private transports = new Map<string, ILlngTransport>();
+  private transports = new Map<string, TransportEntry>();
   private configs: Record<string, LlngInstanceConfig>;
   private defaultInstance: string;
 
@@ -25,32 +33,60 @@ export class TransportRegistry {
     return { name, config };
   }
 
-  getTransport(instance?: string): ILlngTransport {
+  private buildTransport(config: LlngConfig): ILlngTransport {
+    if (config.mode === "api") {
+      if (!config.api) {
+        throw new Error(`API mode requires 'api' configuration`);
+      }
+      return new ApiTransport(config.api);
+    } else if (config.mode === "k8s") {
+      if (!config.k8s) {
+        throw new Error(`K8s mode requires 'k8s' configuration`);
+      }
+      return new K8sTransport(config.k8s);
+    } else {
+      return new SshTransport(config.ssh ?? {});
+    }
+  }
+
+  private buildManagerConfig(config: LlngInstanceConfig): LlngConfig | undefined {
+    if (!config.manager) return undefined;
+    const m = config.manager;
+    const merged: LlngConfig = {
+      mode: m.mode ?? config.mode,
+    };
+    // Deep merge ssh: parent ssh + manager ssh overrides
+    if (config.mode === "ssh" || merged.mode === "ssh") {
+      merged.ssh = { ...config.ssh, ...m.ssh };
+    }
+    if (m.api) merged.api = m.api;
+    else if (config.api && merged.mode === "api") merged.api = config.api;
+    if (m.k8s) merged.k8s = m.k8s;
+    else if (config.k8s && merged.mode === "k8s") merged.k8s = config.k8s;
+    return merged;
+  }
+
+  getTransport(instance?: string, role?: TransportRole): ILlngTransport {
     const { name, config } = this.resolveInstance(instance);
 
-    let transport = this.transports.get(name);
-    if (!transport) {
-      if (config.mode === "api") {
-        if (!config.api) {
-          throw new Error(
-            `Instance '${name}' is configured for API mode but has no 'api' configuration`,
-          );
-        }
-        transport = new ApiTransport(config.api);
-      } else if (config.mode === "k8s") {
-        if (!config.k8s) {
-          throw new Error(
-            `Instance '${name}' is configured for K8s mode but has no 'k8s' configuration`,
-          );
-        }
-        transport = new K8sTransport(config.k8s);
-      } else {
-        transport = new SshTransport(config.ssh ?? {});
-      }
-      this.transports.set(name, transport);
+    let entry = this.transports.get(name);
+    if (!entry) {
+      const portal = this.buildTransport(config);
+      entry = { portal };
+      this.transports.set(name, entry);
     }
 
-    return transport;
+    if (role === "manager") {
+      if (!entry.managerResolved) {
+        const managerConfig = this.buildManagerConfig(config);
+        entry.manager = managerConfig ? this.buildTransport(managerConfig) : undefined;
+        entry.managerResolved = true;
+      }
+      if (entry.manager) {
+        return entry.manager;
+      }
+    }
+    return entry.portal;
   }
 
   getOidcConfig(instance?: string): OidcConfig | undefined {
@@ -58,11 +94,12 @@ export class TransportRegistry {
     return config.oidc;
   }
 
-  listInstances(): { name: string; mode: string; isDefault: boolean }[] {
+  listInstances(): { name: string; mode: string; isDefault: boolean; hasManager: boolean }[] {
     return Object.entries(this.configs).map(([name, config]) => ({
       name,
       mode: config.mode,
       isDefault: name === this.defaultInstance,
+      hasManager: !!config.manager,
     }));
   }
 }

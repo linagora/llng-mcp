@@ -2,5 +2,6 @@ node_modules/
 dist/
 *.tgz
 .mcp.json
+.mcpregistr*
 .omc
 .claude

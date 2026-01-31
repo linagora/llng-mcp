@@ -1,0 +1,22 @@
+# Smithery configuration file: https://smithery.ai/docs/config#smitheryyaml
+
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    properties:
+      instances:
+        type: object
+        description: >
+          LLNG instance configurations. Each key is an instance name,
+          value is an object with mode (ssh/api/k8s/docker) and connection settings.
+          See https://github.com/linagora/llng-mcp#configuration for details.
+      default:
+        type: string
+        description: Default instance name to use when not specified.
+  commandFunction:
+    |-
+    (config) => {
+      const args = ['llng-mcp'];
+      return { command: 'npx', args };
+    }

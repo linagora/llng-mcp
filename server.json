@@ -3,13 +3,13 @@
   "name": "io.github.linagora/llng-mcp",
   "title": "LemonLDAP::NG MCP Server",
   "description": "Manage LemonLDAP::NG SSO instances: configuration, sessions, OIDC, SAML, 2FA.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "packages": [
     {
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "llng-mcp",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "transport": {
         "type": "stdio"
       }

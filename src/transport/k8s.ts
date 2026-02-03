@@ -50,18 +50,20 @@ export class K8sTransport implements ILlngTransport {
     return new Promise((resolve, reject) => {
       const proc = spawn("kubectl", args);
       let stdout = "";
+      let stderr = "";
 
       proc.stdout.on("data", (data) => {
         stdout += data.toString();
       });
 
-      proc.stderr.on("data", () => {
-        // stderr consumed for security
+      proc.stderr.on("data", (data) => {
+        stderr += data.toString();
       });
 
       proc.on("close", (code) => {
         if (code !== 0) {
-          reject(new Error(`kubectl command failed with exit code ${code}`));
+          const errMsg = stderr.trim() || `kubectl command failed with exit code ${code}`;
+          reject(new Error(errMsg));
         } else {
           resolve(stdout);
         }
@@ -77,18 +79,20 @@ export class K8sTransport implements ILlngTransport {
     return new Promise((resolve, reject) => {
       const proc = spawn("kubectl", args);
       let stdout = "";
+      let stderr = "";
 
       proc.stdout.on("data", (data) => {
         stdout += data.toString();
       });
 
-      proc.stderr.on("data", () => {
-        // stderr consumed for security
+      proc.stderr.on("data", (data) => {
+        stderr += data.toString();
       });
 
       proc.on("close", (code) => {
         if (code !== 0) {
-          reject(new Error(`kubectl command failed with exit code ${code}`));
+          const errMsg = stderr.trim() || `kubectl command failed with exit code ${code}`;
+          reject(new Error(errMsg));
         } else {
           resolve(stdout);
         }

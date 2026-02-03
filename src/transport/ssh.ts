@@ -83,18 +83,20 @@ export class SshTransport implements ILlngTransport {
       const spawnOpts = env ? { env: { ...process.env, ...env } } : undefined;
       const proc = spawn(cmd, cmdArgs, spawnOpts);
       let stdout = "";
+      let stderr = "";
 
       proc.stdout.on("data", (data) => {
         stdout += data.toString();
       });
 
-      proc.stderr.on("data", () => {
-        // stderr is consumed but not exposed to clients for security
+      proc.stderr.on("data", (data) => {
+        stderr += data.toString();
       });
 
       proc.on("close", (code) => {
         if (code !== 0) {
-          reject(new Error(`Command failed with exit code ${code}`));
+          const errMsg = stderr.trim() || `Command failed with exit code ${code}`;
+          reject(new Error(errMsg));
         } else {
           resolve(stdout);
         }
@@ -159,18 +161,20 @@ export class SshTransport implements ILlngTransport {
 
       const proc = spawn(cmd, cmdArgs);
       let stdout = "";
+      let stderr = "";
 
       proc.stdout.on("data", (data) => {
         stdout += data.toString();
       });
 
-      proc.stderr.on("data", () => {
-        // stderr is consumed but not exposed to clients for security
+      proc.stderr.on("data", (data) => {
+        stderr += data.toString();
       });
 
       proc.on("close", (code) => {
         if (code !== 0) {
-          reject(new Error(`Command failed with exit code ${code}`));
+          const errMsg = stderr.trim() || `Command failed with exit code ${code}`;
+          reject(new Error(errMsg));
         } else {
           resolve(stdout);
         }

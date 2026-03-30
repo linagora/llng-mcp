@@ -2,7 +2,7 @@
 
 MCP Server for [Lemonldap-NG](https://lemonldap-ng.org/)
 
-Manage your Lemonldap-NG web SSO instances from Claude, Cursor, or any MCP-compatible AI assistant. 43 tools covering configuration, sessions, OIDC, SAML, 2FA, and more.
+Manage your Lemonldap-NG web SSO instances from Claude, Cursor, or any MCP-compatible AI assistant. 44 tools covering configuration, sessions, OIDC, SAML, 2FA, and more.
 
 ## Quick Start
 
@@ -74,6 +74,7 @@ Just ask Claude in natural language:
 | **User Directory**       | Look up user attributes from the configured backend.                                                   |
 | **Cache & Maintenance**  | Purge central and local caches, rotate OIDC keys, delete sessions by UID pattern.                      |
 | **Multi-Instance**       | Manage multiple SSO instances (prod, staging, dev) from a single server.                               |
+| **Documentation**        | Semantic search across LemonLDAP::NG documentation (requires Ollama).                                  |
 
 ## Installation
 
@@ -431,6 +432,12 @@ Configure your MCP client to connect to the stdio server. For example, with `cli
 | llng_oidc_whoami     | Decode ID token | id_token (string)      | OIDC config     |
 | llng_oidc_check_auth | Test protected  | url, access_token      | OIDC config     |
 
+### Documentation
+
+| Tool            | Description                  | Parameters                  | Requires |
+| --------------- | ---------------------------- | --------------------------- | -------- |
+| llng_doc_search | Semantic search in LLNG docs | query (string), limit (int) | Ollama   |
+
 ## Development
 
 ### Build
@@ -472,6 +479,8 @@ llng-mcp uses an abstraction layer (`ILlngTransport`) with two implementations:
 - **ApiTransport** - Makes HTTP requests to LLNG REST API
 
 A `TransportRegistry` manages transport instances per named configuration, enabling multi-instance support. All tools resolve their transport through the registry, allowing seamless switching between modes and instances.
+
+A bundled Brotli-compressed documentation index (`data/index.json.br`) enables semantic search via Ollama embeddings without requiring the original RST sources.
 
 ## Limitations
 

@@ -1,5 +1,11 @@
 # Changelog
 
+## _[0.2.1] - dev_
+
+### Added
+
+- 3 diagnostic tools: `llng_health`, `llng_version`, `llng_flush_cache`
+
 ## [0.2.0] - 2026-03-30
 
 ### Added

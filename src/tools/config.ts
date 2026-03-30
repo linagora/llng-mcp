@@ -39,6 +39,109 @@ export function registerConfigTools(server: McpServer, registry: TransportRegist
     },
   );
 
+  // llng_health - Health check: config access, session read/write
+  server.tool(
+    "llng_health",
+    "Health check: verify config database access, session read access, and session write access",
+    {
+      instance: z.string().optional().describe("LLNG instance name (uses default if omitted)"),
+    },
+    async (args) => {
+      try {
+        const transport = registry.getTransport(args.instance);
+        const result = await transport.healthCheck();
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(result, null, 2),
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+          isError: true,
+        };
+      }
+    },
+  );
+
+  // llng_flush_cache - Flush local caches
+  server.tool(
+    "llng_flush_cache",
+    "Flush local caches (config and/or sessions). Clears all cached entries, not just expired ones.",
+    {
+      target: z
+        .enum(["config", "sessions", "all"])
+        .default("all")
+        .describe("Which cache to flush: config, sessions, or all"),
+      instance: z.string().optional().describe("LLNG instance name (uses default if omitted)"),
+    },
+    async (args) => {
+      try {
+        const transport = registry.getTransport(args.instance);
+        const result = await transport.flushCache(args.target);
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(result, null, 2),
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+          isError: true,
+        };
+      }
+    },
+  );
+
+  // llng_version - Get LemonLDAP::NG version
+  server.tool(
+    "llng_version",
+    "Get the LemonLDAP::NG version installed on the instance",
+    {
+      instance: z.string().optional().describe("LLNG instance name (uses default if omitted)"),
+    },
+    async (args) => {
+      try {
+        const transport = registry.getTransport(args.instance);
+        const version = await transport.getVersion();
+        return {
+          content: [
+            {
+              type: "text",
+              text: version,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+            },
+          ],
+          isError: true,
+        };
+      }
+    },
+  );
+
   // 2. llng_config_get - Get LLNG config value(s) by key
   server.tool(
     "llng_config_get",

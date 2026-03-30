@@ -55,4 +55,44 @@ export interface ILlngTransport {
   consentsDelete(user: string, ids: string[]): Promise<void>;
 
   execScript(scriptName: string, args: string[]): Promise<string>;
+
+  getVersion(): Promise<string>;
+
+  healthCheck(): Promise<HealthCheckResult>;
+
+  flushCache(target: "config" | "sessions" | "all"): Promise<FlushCacheResult>;
+}
+
+export interface HealthCheckStatus {
+  status: "ok" | "error";
+  error?: string;
+}
+
+export interface ConfigHealthStatus extends HealthCheckStatus {
+  cfgNum?: number;
+}
+
+export interface SessionReadHealthStatus extends HealthCheckStatus {
+  count?: number;
+}
+
+export interface SessionWriteHealthStatus extends HealthCheckStatus {
+  testSessionId?: string;
+}
+
+export interface HealthCheckResult {
+  config: ConfigHealthStatus;
+  sessionRead: SessionReadHealthStatus;
+  sessionWrite: SessionWriteHealthStatus;
+}
+
+export interface FlushCacheStatus {
+  status: "ok" | "error" | "skipped";
+  error?: string;
+  reason?: string;
+}
+
+export interface FlushCacheResult {
+  config?: FlushCacheStatus;
+  sessions?: FlushCacheStatus;
 }

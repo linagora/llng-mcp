@@ -6,7 +6,10 @@ import {
   ConfigInfo,
   SessionGetOptions,
   SessionDeleteOptions,
+  HealthCheckResult,
+  FlushCacheResult,
 } from "./interface.js";
+import { HEALTH_CHECK_SCRIPT, FLUSH_CACHE_SCRIPT } from "./perl-scripts.js";
 
 export class SshTransport implements ILlngTransport {
   private paths: { cliPath: string; sessionsPath: string; configEditorPath: string };
@@ -244,8 +247,21 @@ export class SshTransport implements ILlngTransport {
   }
 
   async configGet(keys: string[]): Promise<Record<string, any>> {
-    const output = await this.execCli(["-json", "get", ...keys]);
-    return JSON.parse(output);
+    try {
+      const output = await this.execCli(["-json", "get", ...keys]);
+      return JSON.parse(output);
+    } catch {
+      // Fallback for older CLI versions that don't support -json
+      const output = await this.execCli(["get", ...keys]);
+      const result: Record<string, any> = {};
+      for (const line of output.trim().split("\n")) {
+        const match = line.match(/^(\S+)\s*=\s*(.*)$/);
+        if (match) {
+          result[match[1]] = match[2];
+        }
+      }
+      return result;
+    }
   }
 
   async configSet(pairs: Record<string, any>, log?: string): Promise<void> {
@@ -430,5 +446,26 @@ export class SshTransport implements ILlngTransport {
   async execScript(scriptName: string, args: string[]): Promise<string> {
     const prefix = this.config.binPrefix || "/usr/share/lemonldap-ng/bin";
     return this.exec([`${prefix}/${scriptName}`, ...args]);
+  }
+
+  async getVersion(): Promise<string> {
+    const output = await this.exec([
+      "perl",
+      "-MLemonldap::NG::Common",
+      "-le",
+      "print $Lemonldap::NG::Common::VERSION",
+    ]);
+    return output.trim();
+  }
+
+  async healthCheck(): Promise<HealthCheckResult> {
+    const script = HEALTH_CHECK_SCRIPT;
+    const output = await this.exec(["perl", "-e", script]);
+    return JSON.parse(output.trim());
+  }
+
+  async flushCache(target: "config" | "sessions" | "all"): Promise<FlushCacheResult> {
+    const output = await this.exec(["perl", "-e", FLUSH_CACHE_SCRIPT, target]);
+    return JSON.parse(output.trim());
   }
 }

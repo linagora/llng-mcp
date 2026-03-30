@@ -70,9 +70,12 @@ describe("Tool Registration", () => {
 
       registerConfigTools(mockServer, registry);
 
-      expect(toolNames).toHaveLength(11);
+      expect(toolNames).toHaveLength(14);
       expect(toolNames).toEqual([
         "llng_config_info",
+        "llng_health",
+        "llng_flush_cache",
+        "llng_version",
         "llng_config_get",
         "llng_config_set",
         "llng_config_addKey",

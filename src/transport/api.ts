@@ -4,6 +4,8 @@ import {
   SessionFilter,
   SessionGetOptions,
   SessionDeleteOptions,
+  HealthCheckResult,
+  FlushCacheResult,
 } from "./interface.js";
 import { ApiConfig } from "../config.js";
 import https from "https";
@@ -425,5 +427,47 @@ export class ApiTransport implements ILlngTransport {
 
   async execScript(_scriptName: string, _args: string[]): Promise<string> {
     throw new Error("execScript is not supported via API. Use SSH or K8s mode.");
+  }
+
+  async getVersion(): Promise<string> {
+    throw new Error("getVersion is not supported via API. Use SSH or K8s mode.");
+  }
+
+  async healthCheck(): Promise<HealthCheckResult> {
+    const result: HealthCheckResult = {
+      config: { status: "error", error: "not tested" },
+      sessionRead: { status: "error", error: "not tested" },
+      sessionWrite: { status: "error", error: "not tested" },
+    };
+
+    // 1. Test config access
+    try {
+      const info = await this.configInfo();
+      result.config = { status: "ok", cfgNum: info.cfgNum };
+    } catch (e) {
+      result.config = { status: "error", error: e instanceof Error ? e.message : String(e) };
+    }
+
+    // 2. Test session read
+    try {
+      const sessions = await this.sessionSearch({ count: true });
+      const count =
+        typeof sessions === "number" ? sessions : Array.isArray(sessions) ? sessions.length : 0;
+      result.sessionRead = { status: "ok", count };
+    } catch (e) {
+      result.sessionRead = { status: "error", error: e instanceof Error ? e.message : String(e) };
+    }
+
+    // 3. Session write not testable via API
+    result.sessionWrite = {
+      status: "error",
+      error: "Session write test is not supported via API. Use SSH or K8s mode.",
+    };
+
+    return result;
+  }
+
+  async flushCache(_target: "config" | "sessions" | "all"): Promise<FlushCacheResult> {
+    throw new Error("flushCache is not supported via API. Use SSH or K8s mode.");
   }
 }

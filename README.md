@@ -2,7 +2,7 @@
 
 MCP Server for [Lemonldap-NG](https://lemonldap-ng.org/)
 
-Manage your Lemonldap-NG web SSO instances from Claude, Cursor, or any MCP-compatible AI assistant. 44 tools covering configuration, sessions, OIDC, SAML, 2FA, and more.
+Manage your Lemonldap-NG web SSO instances from Claude, Cursor, or any MCP-compatible AI assistant. 47 tools covering configuration, sessions, OIDC, SAML, 2FA, and more.
 
 ## Quick Start
 
@@ -351,19 +351,22 @@ Configure your MCP client to connect to the stdio server. For example, with `cli
 
 ### Configuration Management
 
-| Tool                     | Description          | Parameters                  | Mode    |
-| ------------------------ | -------------------- | --------------------------- | ------- |
-| llng_config_info         | Get config metadata  | None                        | Both    |
-| llng_config_get          | Fetch config values  | keys (string[])             | Both    |
-| llng_config_set          | Update config values | keys (object), log (string) | Both    |
-| llng_config_addKey       | Add composite key    | key, subkey, value          | Both    |
-| llng_config_delKey       | Delete composite key | key, subkey                 | Both    |
-| llng_config_export       | Export as JSON       | None                        | Both    |
-| llng_config_import       | Import from JSON     | json (string)               | Both    |
-| llng_config_merge        | Merge JSON           | json (string)               | Both    |
-| llng_config_rollback     | Revert previous      | None                        | Both    |
-| llng_config_update_cache | Force cache refresh  | None                        | Both    |
-| llng_config_test_email   | Send test email      | destination (string)        | SSH/K8s |
+| Tool                     | Description          | Parameters                   | Mode    |
+| ------------------------ | -------------------- | ---------------------------- | ------- |
+| llng_config_info         | Get config metadata  | None                         | Both    |
+| llng_health              | Health check         | None                         | Both    |
+| llng_flush_cache         | Flush local caches   | target (config/sessions/all) | SSH/K8s |
+| llng_version             | Get LLNG version     | None                         | SSH/K8s |
+| llng_config_get          | Fetch config values  | keys (string[])              | Both    |
+| llng_config_set          | Update config values | keys (object), log (string)  | Both    |
+| llng_config_addKey       | Add composite key    | key, subkey, value           | Both    |
+| llng_config_delKey       | Delete composite key | key, subkey                  | Both    |
+| llng_config_export       | Export as JSON       | None                         | Both    |
+| llng_config_import       | Import from JSON     | json (string)                | Both    |
+| llng_config_merge        | Merge JSON           | json (string)                | Both    |
+| llng_config_rollback     | Revert previous      | None                         | Both    |
+| llng_config_update_cache | Force cache refresh  | None                         | Both    |
+| llng_config_test_email   | Send test email      | destination (string)         | SSH/K8s |
 
 ### Session Management
 
@@ -409,15 +412,15 @@ Configure your MCP client to connect to the stdio server. For example, with `cli
 
 ### CLI Utilities
 
-| Tool                        | Description              | Parameters                                                              | Mode    |
-| --------------------------- | ------------------------ | ----------------------------------------------------------------------- | ------- |
-| llng_download_saml_metadata | Download SAML metadata   | url, outputFile, noCheck, verbose                                       | SSH/K8s |
-| llng_import_metadata        | Import SAML federation   | url, spPrefix, idpPrefix, ignoreSp, ignoreIdp, remove, noCheck, verbose | SSH/K8s |
-| llng_delete_session         | Delete sessions by UID   | uid, force, debug                                                       | SSH/K8s |
-| llng_user_attributes        | Look up user attributes  | username, field                                                         | SSH/K8s |
-| llng_purge_central_cache    | Purge central cache      | debug, force, json                                                      | SSH/K8s |
-| llng_purge_local_cache      | Purge local cache        | debug                                                                   | SSH/K8s |
-| llng_rotate_oidc_keys       | Rotate OIDC signing keys | debug                                                                   | SSH/K8s |
+| Tool                        | Description                               | Parameters                                                              | Mode    |
+| --------------------------- | ----------------------------------------- | ----------------------------------------------------------------------- | ------- |
+| llng_download_saml_metadata | Download SAML metadata                    | url, outputFile, noCheck, verbose                                       | SSH/K8s |
+| llng_import_metadata        | Import SAML federation                    | url, spPrefix, idpPrefix, ignoreSp, ignoreIdp, remove, noCheck, verbose | SSH/K8s |
+| llng_delete_session         | Delete sessions by UID                    | uid, force, debug                                                       | SSH/K8s |
+| llng_user_attributes        | Look up user attributes                   | username, field                                                         | SSH/K8s |
+| llng_purge_central_cache    | Purge expired sessions from central cache | debug, force, json                                                      | SSH/K8s |
+| llng_purge_local_cache      | Purge expired sessions from local cache   | debug                                                                   | SSH/K8s |
+| llng_rotate_oidc_keys       | Rotate OIDC signing keys                  | debug                                                                   | SSH/K8s |
 
 ### OIDC Testing
 

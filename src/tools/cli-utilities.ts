@@ -160,7 +160,7 @@ export function registerCliUtilityTools(server: McpServer, registry: TransportRe
   // llng_purge_local_cache
   server.tool(
     "llng_purge_local_cache",
-    "Purge local handler cache",
+    "Purge expired sessions from local handler cache",
     {
       debug: z.boolean().optional().describe("Enable debug output"),
       instance: z.string().optional().describe("LLNG instance name (uses default if omitted)"),

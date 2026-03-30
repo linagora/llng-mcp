@@ -17,10 +17,12 @@
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",
     "format": "prettier --write 'src/**/*.ts'",
-    "format:check": "prettier --check 'src/**/*.ts'"
+    "format:check": "prettier --check 'src/**/*.ts'",
+    "build-index": "tsx scripts/build-index.ts"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.12.1"
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "ollama": "^0.5.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
@@ -30,6 +32,7 @@
     "prettier": "^3.8.1",
     "typescript": "^5.7.0",
     "typescript-eslint": "^8.54.0",
+    "tsx": "^4.0.0",
     "vitest": "^4.0.18"
   },
   "engines": {

@@ -13,6 +13,7 @@ import { registerOidcRpTools } from "./tools/oidc-rp.js";
 import { registerInstanceTools } from "./tools/instances.js";
 import { registerCliUtilityTools } from "./tools/cli-utilities.js";
 import { registerDocumentationResource } from "./resources/documentation.js";
+import { registerDocSearchTools } from "./tools/doc-search.js";
 
 async function main() {
   const multiConfig = loadMultiConfig();
@@ -33,6 +34,13 @@ async function main() {
   registerOidcRpTools(server, registry);
   registerInstanceTools(server, registry);
   registerCliUtilityTools(server, registry);
+
+  // Register doc search (optional - requires pre-built index and ollama)
+  try {
+    registerDocSearchTools(server);
+  } catch {
+    // Doc search index not available, skip registration
+  }
 
   // Register resources
   registerDocumentationResource(server);

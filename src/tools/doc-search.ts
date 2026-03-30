@@ -61,11 +61,7 @@ export function registerDocSearchTools(server: McpServer): void {
     "Search LemonLDAP::NG documentation using semantic search. Use this to find information about configuration, features, protocols, and troubleshooting.",
     {
       query: z.string().describe("The search query in natural language"),
-      limit: z
-        .number()
-        .optional()
-        .default(5)
-        .describe("Number of results to return (default: 5)"),
+      limit: z.number().optional().default(5).describe("Number of results to return (default: 5)"),
     },
     async ({ query, limit }) => {
       const index = loadIndex();

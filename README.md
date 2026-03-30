@@ -487,10 +487,13 @@ Ensure the LLNG manager is properly configured with REST endpoints enabled and a
 
 OIDC testing tools are optional. Omit OIDC configuration if not needed.
 
+## Related projects
+
+- [llng-assistant](https://github.com/linagora/llng-assistant) — Interactive CLI assistant for LLNG powered by a local LLM (Ollama). Uses llng-mcp to manage multiple instances via natural language.
+- [LemonLDAP::NG](https://lemonldap-ng.org/) — The web SSO and access management platform.
+
 ## License
 
 AGPL-3.0
 
 Copyright: 2026 [LINAGORA](https://linagora.com)
-
-See the [Lemonldap-NG project](https://lemonldap-ng.org/) for more information.

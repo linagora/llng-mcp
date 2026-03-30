@@ -342,7 +342,7 @@ Log      : Test config`;
 
       const transport = new SshTransport(defaultConfig);
 
-      await expect(transport.configInfo()).rejects.toThrow("Command failed with exit code 1");
+      await expect(transport.configInfo()).rejects.toThrow("Command failed: invalid argument");
     });
 
     it("process error event triggers rejection", async () => {

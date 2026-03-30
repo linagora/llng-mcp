@@ -3,6 +3,7 @@ import { z } from "zod";
 import { readFileSync, existsSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
+import { brotliDecompressSync } from "node:zlib";
 import { Ollama } from "ollama";
 
 const EMBEDDING_MODEL = "nomic-embed-text";
@@ -20,10 +21,10 @@ let cachedIndex: Chunk[] | null = null;
 function loadIndex(): Chunk[] {
   if (cachedIndex) return cachedIndex;
 
-  // Look for index.json in several locations
+  // Look for index.json.br in several locations
   const candidates = [
-    join(dirname(fileURLToPath(import.meta.url)), "../../data/index.json"),
-    join(process.env.HOME ?? "~", ".config/llng-mcp/index.json"),
+    join(dirname(fileURLToPath(import.meta.url)), "../../data/index.json.br"),
+    join(process.env.HOME ?? "~", ".config/llng-mcp/index.json.br"),
   ];
 
   if (process.env.LLNG_DOC_INDEX) {
@@ -32,7 +33,7 @@ function loadIndex(): Chunk[] {
 
   for (const path of candidates) {
     if (existsSync(path)) {
-      cachedIndex = JSON.parse(readFileSync(path, "utf-8"));
+      cachedIndex = JSON.parse(brotliDecompressSync(readFileSync(path)).toString("utf-8"));
       return cachedIndex!;
     }
   }

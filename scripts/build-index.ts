@@ -7,11 +7,12 @@
  *   tsx scripts/build-index.ts --src /path/to/lemonldap-ng/doc/sources
  *
  * Output:
- *   data/index.json  (chunks + embeddings)
+ *   data/index.json.br  (chunks + embeddings, Brotli compressed)
  */
 
 import { readFileSync, writeFileSync, readdirSync, statSync, mkdirSync } from "fs";
 import { resolve, join, extname, dirname } from "path";
+import { brotliCompressSync, constants } from "node:zlib";
 import { Ollama } from "ollama";
 
 const EMBEDDING_MODEL = "nomic-embed-text";
@@ -105,7 +106,7 @@ async function main() {
   }
 
   const srcDir = resolve(args[srcIdx + 1]);
-  const outFile = resolve("data/index.json");
+  const outFile = resolve("data/index.json.br");
 
   // Ensure output directory exists
   mkdirSync(dirname(outFile), { recursive: true });
@@ -163,7 +164,9 @@ async function main() {
   }
 
   console.log(`\n\nGenerated ${allChunks.length} chunks`);
-  writeFileSync(outFile, JSON.stringify(allChunks));
+  writeFileSync(outFile, brotliCompressSync(JSON.stringify(allChunks), {
+    params: { [constants.BROTLI_PARAM_QUALITY]: constants.BROTLI_MAX_QUALITY },
+  }));
   console.log(`Index written to ${outFile}`);
 }
 

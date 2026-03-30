@@ -5,4 +5,5 @@ dist/
 .mcpregistr*
 .omc
 .claude
-data/
+data/index.json*
+!data/index.json.br

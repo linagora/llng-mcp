@@ -62,19 +62,19 @@ Just ask Claude in natural language:
 
 ## What You Can Do
 
-| Capability               | Description                                                                                            |
-| ------------------------ | ------------------------------------------------------------------------------------------------------ |
-| **Configuration**        | Read, update, export, import, merge, and rollback SSO configuration. Test email settings.              |
-| **Sessions**             | Search, inspect, modify, and delete user sessions. Backup all sessions. Manage offline/refresh tokens. |
-| **OIDC Relying Parties** | Enable the OIDC issuer, list/add/update/delete relying parties with sensible defaults.                 |
-| **OIDC Testing**         | Full OIDC flow testing: discovery, authorization with PKCE, token exchange, userinfo, introspection.   |
-| **SAML Federation**      | Download IdP metadata, import SAML federations.                                                        |
-| **Two-Factor Auth**      | List and manage users' 2FA devices (TOTP, U2F, WebAuthn).                                              |
-| **User Consents**        | List and revoke OIDC consents per user.                                                                |
-| **User Directory**       | Look up user attributes from the configured backend.                                                   |
-| **Cache & Maintenance**  | Purge central and local caches, rotate OIDC keys, delete sessions by UID pattern.                      |
-| **Multi-Instance**       | Manage multiple SSO instances (prod, staging, dev) from a single server.                               |
-| **Documentation**        | Semantic search across LemonLDAP::NG documentation (requires Ollama).                                  |
+| Capability               | Description                                                                                                   |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| **Configuration**        | Read, update, export, import, merge, and rollback SSO configuration. Test email settings.                     |
+| **Sessions**             | Search, inspect, modify, and delete user sessions. Backup all sessions. Manage offline/refresh tokens.        |
+| **OIDC Relying Parties** | Enable the OIDC issuer, list/add/update/delete relying parties with sensible defaults.                        |
+| **OIDC Testing**         | Full OIDC flow testing: discovery, authorization with PKCE, token exchange, userinfo, introspection.          |
+| **SAML Federation**      | Download IdP metadata, import SAML federations.                                                               |
+| **Two-Factor Auth**      | List and manage users' 2FA devices (TOTP, U2F, WebAuthn).                                                     |
+| **User Consents**        | List and revoke OIDC consents per user.                                                                       |
+| **User Directory**       | Look up user attributes from the configured backend.                                                          |
+| **Cache & Maintenance**  | Purge central and local caches, rotate OIDC keys, delete sessions by UID pattern.                             |
+| **Multi-Instance**       | Manage multiple SSO instances (prod, staging, dev) from a single server.                                      |
+| **Documentation**        | Semantic search across the full LemonLDAP::NG documentation. Bundled index, just needs Ollama for embeddings. |
 
 ## Installation
 
@@ -284,6 +284,11 @@ Configuration can be overridden via environment variables:
 - `LLNG_OIDC_REDIRECT_URI` - OIDC redirect URI
 - `LLNG_OIDC_SCOPE` - OIDC scopes
 
+**Documentation**
+
+- `LLNG_DOC_INDEX` - Path to a custom documentation index file (overrides bundled index)
+- `OLLAMA_URL` - Ollama server URL for embeddings (default: `http://localhost:11434`)
+
 > **Note**: When using multi-instance configuration, environment variables override the **default instance** only.
 
 ## Usage with Claude Desktop
@@ -437,9 +442,16 @@ Configure your MCP client to connect to the stdio server. For example, with `cli
 
 ### Documentation
 
+The full LemonLDAP::NG documentation index is bundled in the package as a Brotli-compressed file (`data/index.json.br`). At query time, only an Ollama instance is needed to compute the embedding for your search query (model: `nomic-embed-text`).
+
 | Tool            | Description                  | Parameters                  | Requires |
 | --------------- | ---------------------------- | --------------------------- | -------- |
 | llng_doc_search | Semantic search in LLNG docs | query (string), limit (int) | Ollama   |
+
+**Configuration:**
+
+- `OLLAMA_URL` — Ollama endpoint (default: `http://localhost:11434`)
+- `LLNG_DOC_INDEX` — Override the path to the documentation index file
 
 ## Development
 

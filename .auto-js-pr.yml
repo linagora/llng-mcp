@@ -1,0 +1,8 @@
+# Inscrit ce dépôt au bot auto-js-pr (mises à jour de dépendances vulnérables).
+#
+# `npm run test` ne lance que les tests unitaires : vitest.config.ts exclut
+# src/__tests__/integration, qui a sa propre configuration et veut l'instance
+# LLNG de docker-compose.test.yml. `build` est un simple tsc.
+verifyCommands:
+  - npm run test
+  - npm run build
